@@ -92,6 +92,12 @@ MANDATORY, cannot be bypassed. Runs BEFORE PM validation.
 - Tasks count in frontmatter matches checked tasks (source of truth)
 - AC coverage: all ACs covered by tasks (100%), no orphan tasks, all US linkage valid
 
+#### Gate 0 Addition: Defect Verification
+
+- Check `.specweave/increments/<id>/defects.json`: ALL defects must have status `"verified"`
+- If any defect is `"open"` or `"fixed"` but not `"verified"`, BLOCK closure
+- If `defects.json` does not exist, this check passes (no defects tracked)
+
 If validation fails -> increment stays in-progress, command exits.
 
 ### Step 7: PM Validation (3 Gates)
@@ -101,6 +107,10 @@ PM validation report goes in: `.specweave/increments/####-name/reports/PM-VALIDA
 **Gate 1 - Tasks Completed**: All P1 done, P2 done or deferred with reason, P3 done/deferred/backlogged, no blocked tasks, ACs met.
 
 **Gate 2a - E2E Tests (AUTOMATED, BLOCKING)**: Detect playwright/cypress configs (including `repositories/*/*-e2e`). If found, run them. E2E failure blocks closure. No E2E detected -> skip.
+
+#### Gate 2a Addition: Test Manifest Sync
+
+After running E2E tests, update `test-manifest.json` in the increment directory with results (`lastRunDate`, `lastRunResult`). Auto-verify defects whose `source` is `"e2e"` and whose linked tests now pass -- set their status to `"verified"` in `defects.json`.
 
 **Gate 2 - Tests Passing**: All suites passing, coverage >80% critical paths, no unexplained skips, tests align with ACs.
 

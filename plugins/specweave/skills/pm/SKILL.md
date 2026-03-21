@@ -97,28 +97,40 @@ is missing or incomplete, spec.md creation is BLOCKED in strict mode.
 
 ## Project Field (Mandatory on Every User Story)
 
-Every user story MUST have exactly one `**Project**:` field. This is unconditionally required regardless of workspace size.
+Every user story MUST have a `project` attribute on its `<user_story>` tag. This is unconditionally required regardless of workspace size.
 
 **Multi-repo workspaces:**
 - Design **cross-cutting** user stories that span multiple repos
-- Each US gets `**Project**: <repo-id>` based on which repo owns that work
+- Each US gets `project="<repo-id>"` based on which repo owns that work
 - A single increment can contain stories targeting different repos
 - Use prefixed IDs when multiple repos are involved: `US-FE-001`, `US-BE-001`
 - For workspace-scoped work (CI, shared config), use the workspace name
 
-**Example — workspace with 2 repos (frontend, backend):**
-```markdown
-### US-FE-001: Login Page UI
-**Project**: frontend
-**As a** user **I want** a login form **So that** I can authenticate
+**Example -- workspace with 2 repos (frontend, backend):**
+```xml
+<user_story id="US-FE-001" project="frontend">
+  As a user
+  I want a login form
+  So that I can authenticate
 
-### US-BE-001: Authentication API
-**Project**: backend
-**As a** user **I want** a /login endpoint **So that** the frontend can authenticate
+  <acceptance_criteria>
+    - [ ] AC-USFE1-01: Given valid credentials, when submitted, then redirect to dashboard
+  </acceptance_criteria>
+</user_story>
+
+<user_story id="US-BE-001" project="backend">
+  As a user
+  I want a /login endpoint
+  So that the frontend can authenticate
+
+  <acceptance_criteria>
+    - [ ] AC-USBE1-01: Given valid credentials, when POST /login, then return 200 with JWT
+  </acceptance_criteria>
+</user_story>
 ```
 
 **Single-project workspaces:**
-- All user stories get `**Project**: <workspace.name>` (auto-resolved)
+- All user stories get `project="<workspace.name>"` (auto-resolved)
 
 ## Core Principles
 
@@ -139,16 +151,17 @@ Every user story MUST have exactly one `**Project**:` field. This is uncondition
 ```
 
 ### User Story Format
-```markdown
-### US-001: [Title]
-**Project**: [project-name]
-**As a** [role]
-**I want** [capability]
-**So that** [benefit]
+```xml
+<user_story id="US-001" project="[project-name]">
+  As a [role]
+  I want [capability]
+  So that [benefit]
 
-**Acceptance Criteria**:
-- [ ] **AC-US1-01**: [Criterion 1]
-- [ ] **AC-US1-02**: [Criterion 2]
+  <acceptance_criteria>
+    - [ ] AC-US1-01: Given [precondition], when [action], then [result]
+    - [ ] AC-US1-02: [Criterion -- BDD format, no "or" conditions]
+  </acceptance_criteria>
+</user_story>
 ```
 
 ## Workflow

@@ -161,8 +161,7 @@ config: {key: value, broken
 `;
       fs.writeFileSync(specPath, content);
 
-      expect(() => parseSpecMd(specPath)).toThrow(/No YAML frontmatter found/);
-      expect(() => parseSpecMd(specPath)).toThrow(/must start with/);
+      expect(() => parseSpecMd(specPath)).toThrow(/No frontmatter or <increment> tag found/);
     });
 
     it('should throw error when frontmatter markers missing', () => {
@@ -177,7 +176,7 @@ title: Test
 `;
       fs.writeFileSync(specPath, content);
 
-      expect(() => parseSpecMd(specPath)).toThrow(/No YAML frontmatter found/);
+      expect(() => parseSpecMd(specPath)).toThrow(/No frontmatter or <increment> tag found/);
     });
   });
 
@@ -212,7 +211,7 @@ Just a plain string
 `;
       fs.writeFileSync(specPath, content);
 
-      expect(() => parseSpecMd(specPath)).toThrow(/must be an object/);
+      expect(() => parseSpecMd(specPath)).toThrow(/Missing required field: increment/);
     });
   });
 
@@ -231,7 +230,7 @@ increment: 1-test
       fs.writeFileSync(specPath, content);
 
       expect(() => parseSpecMd(specPath)).toThrow(/Invalid increment ID format/);
-      expect(() => parseSpecMd(specPath)).toThrow(/missing leading zeros/i);
+      expect(() => parseSpecMd(specPath)).toThrow(/4-digit number/);
     });
 
     it('should throw error for underscore instead of hyphen (0001_test)', () => {
@@ -264,7 +263,7 @@ increment: 0001-Test-Feature
       fs.writeFileSync(specPath, content);
 
       expect(() => parseSpecMd(specPath)).toThrow(/Invalid increment ID format/);
-      expect(() => parseSpecMd(specPath)).toThrow(/uppercase/i);
+      expect(() => parseSpecMd(specPath)).toThrow(/kebab-case/);
     });
 
     it('should throw error for missing name part (0001)', () => {
@@ -335,10 +334,9 @@ data: [unclosed
         parseSpecMd(specPath);
         expect.fail('Should have thrown error');
       } catch (error: any) {
-        expect(error.message).toContain('Common mistakes');
-        expect(error.message).toContain('Unclosed brackets');
-        expect(error.message).toContain('Valid example');
-        expect(error.message).toContain('CLAUDE.md Rule #16');
+        expect(error.message).toContain('Malformed YAML frontmatter');
+        expect(error.message).toMatch(/lines \d+-\d+/);
+        expect(error.message).toContain('unclosed');
       }
     });
 
@@ -381,10 +379,10 @@ increment: 1-test
         parseSpecMd(specPath);
         expect.fail('Should have thrown error');
       } catch (error: any) {
-        expect(error.message).toContain('Valid examples');
-        expect(error.message).toContain('0001-feature-name');
-        expect(error.message).toContain('Invalid examples');
-        expect(error.message).toContain('CLAUDE.md Rule #16');
+        expect(error.message).toContain('Invalid increment ID format');
+        expect(error.message).toContain('Expected format');
+        expect(error.message).toContain('4-digit number');
+        expect(error.message).toContain('kebab-case');
       }
     });
   });

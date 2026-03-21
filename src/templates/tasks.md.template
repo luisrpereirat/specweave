@@ -152,9 +152,9 @@ Tasks are **grouped by User Story** for traceability:
 Before closing this increment, the following MUST be true:
 
 1. **All tasks completed**: Every task marked `[x] completed`
-2. **All ACs covered**: Every AC-ID from spec.md has at least one task
+2. **All ACs covered**: Every AC-ID from spec.md (inside `<acceptance_criteria>` tags) has at least one task
 3. **No orphan tasks**: Every task has **Satisfies ACs** field
-4. **Valid linkage**: All US-IDs and AC-IDs exist in spec.md
+4. **Valid linkage**: All US-IDs and AC-IDs exist in spec.md (inside `<user_story>` tags)
 
 **Validation commands**:
 ```bash

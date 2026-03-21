@@ -10,6 +10,7 @@
 
 import * as fs from 'fs';
 import * as path from 'path';
+import { validateDAG } from '../../validators/dependency-dag-validator.js';
 
 /**
  * Validation severity levels
@@ -36,6 +37,9 @@ export enum ValidationErrorCode {
   SPEC_CONTAINS_TECHNICAL_DETAILS = 'SPEC_CONTAINS_TECHNICAL_DETAILS',
   SPEC_MISSING_AC = 'SPEC_MISSING_AC',
   SPEC_MISSING_PROJECT = 'SPEC_MISSING_PROJECT',
+  SPEC_MISSING_HARDENING_BLOCK = 'SPEC_MISSING_HARDENING_BLOCK',
+  SPEC_VAGUE_TERM = 'SPEC_VAGUE_TERM',
+  SPEC_DAG_ERROR = 'SPEC_DAG_ERROR',
 
   // plan.md violations
   PLAN_CONTAINS_AC = 'PLAN_CONTAINS_AC',
@@ -107,6 +111,8 @@ export class ThreeFileValidator {
 
   /**
    * Validate spec.md structure
+   *
+   * Supports both XML-fenced format (primary) and legacy markdown headings (fallback).
    */
   private validateSpecFile(incrementDir: string): ValidationIssue[] {
     const issues: ValidationIssue[] = [];
@@ -125,6 +131,7 @@ export class ThreeFileValidator {
 
     const content = fs.readFileSync(specPath, 'utf-8');
     const lines = content.split('\n');
+    const isXmlFormat = content.includes('<increment>');
 
     // Rule 1: spec.md should NOT contain task IDs (T-001, T-002, T-1000, etc.)
     lines.forEach((line, index) => {
@@ -150,9 +157,18 @@ export class ThreeFileValidator {
       /\.js\b/
     ];
 
+    let inCodeBlock = false;
     lines.forEach((line, index) => {
+      // Track code block state
+      if (line.trim().startsWith('```')) {
+        inCodeBlock = !inCodeBlock;
+        return;
+      }
+      // Also skip XML comment blocks
+      if (inCodeBlock || line.trim().startsWith('<!--') || line.trim().startsWith('-->')) return;
+
       for (const pattern of technicalPatterns) {
-        if (pattern.test(line) && !line.includes('```')) { // Ignore code blocks
+        if (pattern.test(line)) {
           issues.push({
             code: ValidationErrorCode.SPEC_CONTAINS_TECHNICAL_DETAILS,
             severity: ValidationSeverity.WARNING,
@@ -166,38 +182,171 @@ export class ThreeFileValidator {
       }
     });
 
-    // Rule 3: Every ### US-NNN block must have a **Project**: field
-    const usHeaders = lines
-      .map((line, index) => ({ line, index }))
-      .filter(({ line }) => /^###\s+US-(?:[A-Z]+-)*\d+:/.test(line));
+    if (isXmlFormat) {
+      // XML format: validate user story tags and project attributes
+      const usTagRegex = /<user_story\s+id="(US-(?:[A-Za-z]{2,6}-)?\d{3,}E?)"/g;
+      let usMatch;
+      while ((usMatch = usTagRegex.exec(content)) !== null) {
+        const usId = usMatch[1];
+        const tagOffset = usMatch.index;
+        const lineNumber = content.substring(0, tagOffset).split('\n').length;
 
-    for (const { line: usLine, index: usIndex } of usHeaders) {
-      // Find the next US header or end of file
-      const nextUsIndex = usHeaders.find(h => h.index > usIndex)?.index ?? lines.length;
-      const usBlock = lines.slice(usIndex, nextUsIndex).join('\n');
+        // Check for project attribute
+        const tagLine = content.substring(tagOffset, content.indexOf('>', tagOffset) + 1);
+        if (!tagLine.includes('project="')) {
+          issues.push({
+            code: ValidationErrorCode.SPEC_MISSING_PROJECT,
+            severity: ValidationSeverity.ERROR,
+            file: 'spec.md',
+            line: lineNumber,
+            message: `Missing project attribute on <user_story id="${usId}">. Every user story must specify a project.`,
+            fix: `Add project="<project-name>" to <user_story id="${usId}">`
+          });
+        }
+      }
 
-      if (!usBlock.includes('**Project**:')) {
-        const usId = usLine.match(/US-(?:[A-Z]+-)*\d+/)?.[0] ?? 'unknown';
+      // Check for <acceptance_criteria> section
+      if (!content.includes('<acceptance_criteria>')) {
         issues.push({
-          code: ValidationErrorCode.SPEC_MISSING_PROJECT,
-          severity: ValidationSeverity.ERROR,
+          code: ValidationErrorCode.SPEC_MISSING_AC,
+          severity: ValidationSeverity.WARNING,
           file: 'spec.md',
-          line: usIndex + 1,
-          message: `Missing **Project**: field in ${usId}. Every user story must specify a project.`,
-          fix: `Add **Project**: <project-name> after the ### ${usId} heading`
+          message: 'spec.md missing <acceptance_criteria> section',
+          fix: 'Add <acceptance_criteria> tags with AC-XXX-YY criteria inside user stories'
+        });
+      }
+
+      // Rule: Validate all 8 hardening blocks are present
+      const requiredHardeningBlocks = [
+        'error_handling',
+        'responsive_design',
+        'accessibility',
+        'initial_states',
+        'security_and_compliance',
+        'performance_and_capacity',
+        'operational_constraints',
+        'anti_requirements'
+      ];
+
+      for (const block of requiredHardeningBlocks) {
+        if (!content.includes(`<${block}>`)) {
+          issues.push({
+            code: ValidationErrorCode.SPEC_MISSING_HARDENING_BLOCK,
+            severity: ValidationSeverity.ERROR,
+            file: 'spec.md',
+            message: `Missing required hardening block: <${block}>. All 8 hardening blocks must be present.`,
+            fix: `Add <${block}> section with quantified, measurable content`
+          });
+        }
+      }
+
+      // Rule: Warn on vague/unquantified terms in hardening blocks and ACs
+      const vagueTerms = [
+        /\bfast\b/i, /\bslow\b/i, /\bsmooth\b/i, /\bnice\b/i,
+        /\bsubtle\b/i, /\bsmall\b/i, /\blarge\b/i, /\bquickly\b/i,
+        /\bgood\b/i, /\bclear\b/i, /\bresponsive\b/i, /\bappropriate\b/i
+      ];
+
+      // Check inside hardening blocks and acceptance_criteria only
+      const hardeningAndAcSections = [
+        ...requiredHardeningBlocks.map(b => ({ open: `<${b}>`, close: `</${b}>` })),
+        { open: '<acceptance_criteria>', close: '</acceptance_criteria>' }
+      ];
+
+      for (const section of hardeningAndAcSections) {
+        let searchStart = 0;
+        while (true) {
+          const openIdx = content.indexOf(section.open, searchStart);
+          if (openIdx === -1) break;
+          const closeIdx = content.indexOf(section.close, openIdx);
+          if (closeIdx === -1) break;
+
+          const sectionContent = content.substring(openIdx, closeIdx);
+          const sectionLines = sectionContent.split('\n');
+          const sectionStartLine = content.substring(0, openIdx).split('\n').length;
+
+          for (let si = 0; si < sectionLines.length; si++) {
+            const sLine = sectionLines[si];
+            for (const pattern of vagueTerms) {
+              if (pattern.test(sLine)) {
+                const matchedWord = sLine.match(pattern)?.[0];
+                issues.push({
+                  code: ValidationErrorCode.SPEC_VAGUE_TERM,
+                  severity: ValidationSeverity.WARNING,
+                  file: 'spec.md',
+                  line: sectionStartLine + si,
+                  message: `Vague term "${matchedWord}" found. Use measurable values instead.`,
+                  fix: `Replace "${matchedWord}" with specific value (e.g., "under 200ms", "4.5:1 contrast", "2px solid #1976D2")`
+                });
+                break; // One warning per line is enough
+              }
+            }
+          }
+
+          searchStart = closeIdx + section.close.length;
+        }
+      }
+
+    } else {
+      // Legacy markdown format: validate headings and Project fields
+      const usHeaders = lines
+        .map((line, index) => ({ line, index }))
+        .filter(({ line }) => /^###\s+US-(?:[A-Z]+-)*\d+:/.test(line));
+
+      for (const { line: usLine, index: usIndex } of usHeaders) {
+        const nextUsIndex = usHeaders.find(h => h.index > usIndex)?.index ?? lines.length;
+        const usBlock = lines.slice(usIndex, nextUsIndex).join('\n');
+
+        if (!usBlock.includes('**Project**:')) {
+          const usId = usLine.match(/US-(?:[A-Z]+-)*\d+/)?.[0] ?? 'unknown';
+          issues.push({
+            code: ValidationErrorCode.SPEC_MISSING_PROJECT,
+            severity: ValidationSeverity.ERROR,
+            file: 'spec.md',
+            line: usIndex + 1,
+            message: `Missing **Project**: field in ${usId}. Every user story must specify a project.`,
+            fix: `Add **Project**: <project-name> after the ### ${usId} heading`
+          });
+        }
+      }
+
+      // Check for Acceptance Criteria section
+      if (!content.includes('## Acceptance Criteria') && !content.includes('### Acceptance Criteria')) {
+        issues.push({
+          code: ValidationErrorCode.SPEC_MISSING_AC,
+          severity: ValidationSeverity.WARNING,
+          file: 'spec.md',
+          message: 'spec.md missing "Acceptance Criteria" section',
+          fix: 'Add "## Acceptance Criteria" section with AC-XXX-YY criteria'
         });
       }
     }
 
-    // Rule 4: spec.md should contain Acceptance Criteria section
-    if (!content.includes('## Acceptance Criteria') && !content.includes('### Acceptance Criteria')) {
-      issues.push({
-        code: ValidationErrorCode.SPEC_MISSING_AC,
-        severity: ValidationSeverity.WARNING,
-        file: 'spec.md',
-        message: 'spec.md missing "Acceptance Criteria" section',
-        fix: 'Add "## Acceptance Criteria" section with AC-XXX-YY criteria'
-      });
+    // DAG dependency validation (applies to both XML and legacy formats)
+    try {
+      const dagResult = validateDAG(content);
+      if (!dagResult.valid) {
+        for (const dagError of dagResult.errors) {
+          issues.push({
+            code: ValidationErrorCode.SPEC_DAG_ERROR,
+            severity: ValidationSeverity.ERROR,
+            file: 'spec.md',
+            message: `Dependency DAG: ${dagError}`,
+            fix: 'Fix the <dependencies> section to resolve cycles, missing references, or self-dependencies'
+          });
+        }
+      }
+      for (const dagWarning of dagResult.warnings) {
+        issues.push({
+          code: ValidationErrorCode.SPEC_DAG_ERROR,
+          severity: ValidationSeverity.WARNING,
+          file: 'spec.md',
+          message: `Dependency DAG: ${dagWarning}`,
+          fix: 'Review the <dependencies> section for unused nodes or other structural improvements'
+        });
+      }
+    } catch {
+      // DAG validation is non-critical; skip on error
     }
 
     return issues;

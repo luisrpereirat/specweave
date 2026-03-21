@@ -85,6 +85,21 @@ The implementer finished suspiciously quickly. Their report may be incomplete, i
 - If scope creep detected: severity **MAJOR** (unrequested work must be justified or removed)
 - Phase 0 findings are included in the main grill report alongside Phase 2 code quality findings
 
+### Defect Auto-Creation (Phase 0)
+
+When an AC fails compliance:
+1. Check if `.specweave/increments/<id>/defects.json` exists; create it with an empty array if not
+2. Create a DEF entry: `source: "grill"`, severity based on finding severity
+3. Link to the failing AC-ID
+4. Append the entry to `defects.json` — do not overwrite existing entries
+
+### Regression Metadata (Phase 0)
+
+If `test-manifest.json` exists in the increment:
+1. For each AC in `acCompliance.results[]`, read the matching `acTests` entry from `test-manifest.json`
+2. Embed `regression` metadata (`automationType`, `testFile`, `lastRunDate`, `lastRunResult`) into the grill report alongside each AC result
+3. If no matching `acTests` entry exists for an AC, note it as "no regression coverage"
+
 ---
 
 ### Phase 1: Context Gathering

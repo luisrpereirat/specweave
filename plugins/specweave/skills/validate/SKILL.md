@@ -70,7 +70,7 @@ Run 130+ checks across 7 categories. **Run structure validation FIRST.**
 
 **Key three-file rules (ADR-0047)**:
 - tasks.md: MUST have `**Implementation**:` and `**AC-IDs**:` references. Must NOT have `**Acceptance Criteria**:` or user story language.
-- spec.md: MUST have `## Acceptance Criteria`. Must NOT have task IDs (T-001).
+- spec.md: MUST have `<acceptance_criteria>` blocks inside each `<user_story>`. Must NOT have task IDs (T-001).
 - plan.md: Must NOT have AC sections or task checkboxes.
 
 Display category pass/fail counts and AC coverage percentage.

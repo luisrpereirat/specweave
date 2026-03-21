@@ -507,14 +507,17 @@ export function validateSpecCompletion(specPath: string): {
     issues.push('Acceptance criteria not specified');
   }
 
-  // Check minimum content
-  const userStories = content.match(/### US-(?:[A-Z]+-)*\d+:/g) || [];
-  if (userStories.length < 1) {
+  // Check minimum content -- support both XML and legacy formats
+  const xmlUserStories = content.match(/<user_story\s+id="US-/g) || [];
+  const legacyUserStories = content.match(/### US-(?:[A-Z]+-)*\d+:/g) || [];
+  if (xmlUserStories.length + legacyUserStories.length < 1) {
     issues.push('No user stories defined');
   }
 
-  const acceptanceCriteria = content.match(/\*\*AC-US\d+-\d+\*\*:/g) || [];
-  if (acceptanceCriteria.length < 2) {
+  const boldACs = content.match(/\*\*AC-US\d+-\d+\*\*:/g) || [];
+  const plainACs = content.match(/AC-US\d+-\d+:/g) || [];
+  const totalACs = Math.max(boldACs.length, plainACs.length);
+  if (totalACs < 2) {
     issues.push('Insufficient acceptance criteria (need at least 2)');
   }
 
@@ -526,6 +529,8 @@ export function validateSpecCompletion(specPath: string): {
 
 /**
  * Generate spec.md template content.
+ *
+ * Produces XML-fenced format with hardening block placeholders.
  */
 function generateSpecTemplate(options: {
   incrementId: string;
@@ -543,96 +548,135 @@ function generateSpecTemplate(options: {
     title,
     description,
     projectId,
-    boardId,
     type,
     priority,
-    testMode,
-    coverageTarget,
   } = options;
 
   const date = new Date().toISOString().split('T')[0];
-  const boardLine = boardId ? `**Board**: ${boardId}\n` : '';
 
-  return `---
-increment: ${incrementId}
-title: "${title}"
-type: ${type}
-priority: ${priority}
-status: planned
-created: ${date}
-structure: user-stories
-test_mode: ${testMode}
-coverage_target: ${coverageTarget}
----
+  return `<increment>
+  <id>${incrementId}</id>
+  <title>${title}</title>
+  <status>planned</status>
+  <priority>${priority}</priority>
+  <type>${type}</type>
+  <created>${date}</created>
 
-# Feature: ${title}
+  <problem_statement>
+    ${description || '[Describe the problem this feature solves. Be specific about the pain point.]'}
+  </problem_statement>
 
-## Overview
+  <!--
+  ====================================================================
+    TEMPLATE FILE - MUST BE COMPLETED VIA PM/ARCHITECT SKILLS
+  ====================================================================
 
-${description}
+  This is a TEMPLATE created by increment skill.
+  DO NOT manually fill in the placeholders below.
 
-<!--
-====================================================================
-  TEMPLATE FILE - MUST BE COMPLETED VIA PM/ARCHITECT SKILLS
-====================================================================
+  To complete this specification, run:
+    Tell Claude: "Complete the spec for increment ${incrementId}"
 
-This is a TEMPLATE created by increment skill.
-DO NOT manually fill in the placeholders below.
+  This will activate the PM skill which will:
+  - Define proper user stories with acceptance criteria
+  - Create hardening blocks with quantified values
+  - Define success metrics
 
-To complete this specification, run:
-  Tell Claude: "Complete the spec for increment ${incrementId}"
+  ====================================================================
+  -->
 
-This will activate the PM skill which will:
-- Define proper user stories with acceptance criteria
-- Conduct market research and competitive analysis
-- Create user personas
-- Define success metrics
+  <goals>
+    - [Primary goal with measurable target]
+    - [Secondary goal with measurable target]
+  </goals>
 
-====================================================================
--->
+  <user_stories>
 
-## User Stories
+    <user_story id="US-001" project="${projectId}">
+      As a [user type]
+      I want [goal]
+      So that [benefit]
 
-### US-001: [Story Title] (P1)
-**Project**: ${projectId}
-${boardLine}
-**As a** [user type]
-**I want** [goal]
-**So that** [benefit]
+      <acceptance_criteria>
+        - [ ] AC-US1-01: [Specific, testable criterion]
+        - [ ] AC-US1-02: [Another criterion]
+      </acceptance_criteria>
+    </user_story>
 
-**Acceptance Criteria**:
-- [ ] **AC-US1-01**: [Specific, testable criterion]
-- [ ] **AC-US1-02**: [Another criterion]
+    <user_story id="US-002" project="${projectId}">
+      As a [user type]
+      I want [goal]
+      So that [benefit]
 
----
+      <acceptance_criteria>
+        - [ ] AC-US2-01: [Specific, testable criterion]
+        - [ ] AC-US2-02: [Another criterion]
+      </acceptance_criteria>
+    </user_story>
 
-### US-002: [Story Title] (P2)
-**Project**: ${projectId}
-${boardLine}
-**As a** [user type]
-**I want** [goal]
-**So that** [benefit]
+  </user_stories>
 
-**Acceptance Criteria**:
-- [ ] **AC-US2-01**: [Specific, testable criterion]
-- [ ] **AC-US2-02**: [Another criterion]
+  <out_of_scope>
+    - [What this feature explicitly does NOT include]
+  </out_of_scope>
 
-## Functional Requirements
+  <error_handling>
+    - [If error condition, then user-visible behavior with hex color, px, timing]
+  </error_handling>
 
-### FR-001: [Requirement]
-[Detailed description]
+  <responsive_design>
+    - [Below Npx: layout change. Above Npx: layout change]
+  </responsive_design>
 
-## Success Criteria
+  <accessibility>
+    - [ARIA labels, roles, WCAG compliance levels]
+  </accessibility>
 
-[Measurable outcomes - metrics, KPIs]
+  <initial_states>
+    - [First load, empty state, loading state with exact visuals]
+  </initial_states>
 
-## Out of Scope
+  <security_and_compliance>
+    - [Input validation, auth, sanitization rules]
+  </security_and_compliance>
 
-[What this explicitly does NOT include]
+  <performance_and_capacity>
+    - [Latency targets, resource limits, concurrency]
+  </performance_and_capacity>
 
-## Dependencies
+  <operational_constraints>
+    - [Runtime, platform, infrastructure requirements]
+  </operational_constraints>
 
-[Other features or systems this depends on]
+  <anti_requirements>
+    - [Things the system must NOT do]
+  </anti_requirements>
+
+  <technology_stack>
+    - [Framework, build tool, CSS approach, backend, database]
+  </technology_stack>
+
+  <non_functional_requirements>
+    - [Performance target with units]
+    - [Security considerations]
+  </non_functional_requirements>
+
+  <edge_cases>
+    - [Boundary condition]: [Expected behavior]
+  </edge_cases>
+
+  <risks>
+    - [Risk] (P=[0.0-1.0], I=[1-10], mitigation: [strategy])
+  </risks>
+
+  <success_metrics>
+    - [Metric]: [target value with units]
+  </success_metrics>
+
+  <dependencies>
+  </dependencies>
+
+</increment>
 `;
 }
 

@@ -69,16 +69,22 @@ export function validateACPresence(
 
   const specContent = readFileSync(specPath, 'utf-8');
 
-  // 2. Check for "## Acceptance Criteria" section
-  if (!specContent.includes('## Acceptance Criteria')) {
+  // 2. Check for acceptance criteria section (XML or legacy format)
+  const hasXmlAcSection = specContent.includes('<acceptance_criteria>');
+  const hasLegacyAcSection = specContent.includes('## Acceptance Criteria');
+  if (!hasXmlAcSection && !hasLegacyAcSection) {
     result.valid = false;
-    result.errors.push('spec.md missing "## Acceptance Criteria" section');
-    result.suggestedFix = `Add ACs inline to spec.md (format: - [ ] **AC-US1-01**: Title)`;
+    result.errors.push('spec.md missing acceptance criteria section (expected <acceptance_criteria> tag or "## Acceptance Criteria" heading)');
+    result.suggestedFix = `Add ACs inside <acceptance_criteria> tags (format: - [ ] AC-US1-01: description) or as "## Acceptance Criteria" section`;
   }
 
-  // 3. Count ACs in spec.md
-  const acMatches = specContent.match(/^- \[[x ]\] \*\*AC-US\d+-\d+\*\*:/gm);
-  result.acCount = acMatches ? acMatches.length : 0;
+  // 3. Count ACs in spec.md -- support both bold (**AC-US1-01**:) and plain (AC-US1-01:) formats
+  const boldAcMatches = specContent.match(/^- \[[x ]\] \*\*AC-US\d+-\d+\*\*:/gm);
+  const plainAcMatches = specContent.match(/^[\s]*- \[[x ]\]\s+AC-US\d+-\d+:/gm);
+  result.acCount = Math.max(
+    boldAcMatches ? boldAcMatches.length : 0,
+    plainAcMatches ? plainAcMatches.length : 0
+  );
 
   if (result.acCount === 0) {
     result.valid = false;
@@ -112,11 +118,16 @@ export function validateACPresence(
     }
   }
 
-  // 5. Validate AC format
+  // 5. Validate AC format (both bold and plain formats)
   const invalidACs: string[] = [];
   const lines = specContent.split('\n');
   for (const [index, line] of lines.entries()) {
+    // Check for bold-format ACs with bad format
     if (line.includes('**AC-US') && !line.match(/^- \[[x ]\] \*\*AC-US\d+-\d+\*\*:/)) {
+      invalidACs.push(`Line ${index + 1}: "${line.substring(0, 60)}..."`);
+    }
+    // Check for plain-format ACs with bad format (inside <acceptance_criteria> tags)
+    if (line.trim().match(/^- \[/) && line.includes('AC-US') && !line.trim().match(/^- \[[x ]\]\s+\*{0,2}AC-US\d+-\d+\*{0,2}:/)) {
       invalidACs.push(`Line ${index + 1}: "${line.substring(0, 60)}..."`);
     }
   }
@@ -128,13 +139,14 @@ export function validateACPresence(
     }
   }
 
-  // 6. Check for "structure: user-stories" pattern
+  // 6. Check for "structure: user-stories" pattern (legacy frontmatter) or XML format
+  const isXmlFormat = specContent.includes('<increment>');
   const frontmatterMatch = specContent.match(/^---\n([\s\S]*?)\n---/);
-  if (frontmatterMatch) {
+  if (frontmatterMatch && !isXmlFormat) {
     const frontmatter = frontmatterMatch[1];
     if (frontmatter.includes('structure: user-stories') && result.acCount === 0) {
       result.errors.push(
-        '⚠️  CRITICAL: spec.md uses `structure: user-stories` but contains NO inline ACs'
+        'CRITICAL: spec.md uses `structure: user-stories` but contains NO inline ACs'
       );
       result.errors.push(
         '   AC sync hooks require ACs in spec.md even when using external living docs'
@@ -143,6 +155,7 @@ export function validateACPresence(
       result.valid = false;
     }
   }
+  // For XML format, acceptance_criteria tags missing is already caught in step 2
 
   return result;
 }

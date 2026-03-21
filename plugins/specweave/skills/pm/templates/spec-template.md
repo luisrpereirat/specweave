@@ -1,106 +1,161 @@
 # Spec Template
 
-Copy and customize this template for new increments.
+Copy and customize this template for new increments. The file uses XML tags as
+section boundaries with free-form human-readable content inside. No DTD, no
+`<?xml>` declaration. Users can hand-edit by adding bullet items within any tag.
 
-```markdown
----
-increment: ####-feature-name
-title: "Feature Title"
-status: active
-priority: P0
-type: feature
-created: YYYY-MM-DD
----
+```xml
+<increment>
+  <id>####-feature-name</id>
+  <title>Feature Title</title>
+  <status>active</status>
+  <priority>P0</priority>
+  <type>feature</type>
+  <created>YYYY-MM-DD</created>
 
-# Feature Title
+  <problem_statement>
+    [Describe the problem this feature solves. Be specific about the pain point.]
+  </problem_statement>
 
-## Problem Statement
+  <goals>
+    - [Primary goal with measurable target]
+    - [Secondary goal with measurable target]
+    - [Measurable outcome]
+  </goals>
 
-[Describe the problem this feature solves. Be specific about the pain point.]
+  <user_stories>
 
-## Goals
+    <user_story id="US-001" project="[project-name]">
+      As a [user role]
+      I want [capability/action]
+      So that [benefit/value]
 
-- [Primary goal]
-- [Secondary goal]
-- [Measurable outcome]
+      <acceptance_criteria>
+        - [ ] AC-US1-01: Given [precondition], when [action], then [expected result]
+        - [ ] AC-US1-02: [Another criterion -- BDD format, no "or" conditions]
+        - [ ] AC-US1-03: [Edge case handling with measurable outcome]
+      </acceptance_criteria>
+    </user_story>
 
-## User Stories
+    <user_story id="US-002" project="[project-name]">
+      As a [user role]
+      I want [capability/action]
+      So that [benefit/value]
 
-### US-001: [First User Story Title]
-**Project**: [project-name]
-**As a** [user role]
-**I want** [capability/action]
-**So that** [benefit/value]
+      <acceptance_criteria>
+        - [ ] AC-US2-01: [Criterion with concrete value]
+        - [ ] AC-US2-02: [Criterion with concrete value]
+      </acceptance_criteria>
+    </user_story>
 
-**Acceptance Criteria**:
-- [ ] **AC-US1-01**: Given [precondition], when [action], then [expected result]
-- [ ] **AC-US1-02**: [Another criterion]
-- [ ] **AC-US1-03**: [Edge case handling]
+    <user_story id="US-003" project="[project-name]">
+      As a [user role]
+      I want [capability/action]
+      So that [benefit/value]
 
-### US-002: [Second User Story Title]
-**Project**: [project-name]
-**As a** [user role]
-**I want** [capability/action]
-**So that** [benefit/value]
+      <acceptance_criteria>
+        - [ ] AC-US3-01: [Criterion]
+        - [ ] AC-US3-02: [Criterion]
+      </acceptance_criteria>
+    </user_story>
 
-**Acceptance Criteria**:
-- [ ] **AC-US2-01**: [Criterion]
-- [ ] **AC-US2-02**: [Criterion]
+  </user_stories>
 
-### US-003: [Third User Story Title]
-**Project**: [project-name]
-**As a** [user role]
-**I want** [capability/action]
-**So that** [benefit/value]
+  <out_of_scope>
+    - [Feature explicitly NOT included]: OUT. Architectural hook: [how to add later]
+    - [Feature deferred to future increment]: OUT. Architectural hook: [design for extensibility]
+    - [Technical limitation accepted for MVP]
+  </out_of_scope>
 
-**Acceptance Criteria**:
-- [ ] **AC-US3-01**: [Criterion]
-- [ ] **AC-US3-02**: [Criterion]
+  <!-- Hardening blocks (all 8 required) -->
 
-## Out of Scope
+  <error_handling>
+    - If [error condition], then [specific user-visible behavior with hex color, px size, timing]
+    - If [API failure], show [exact error message] in [#hex color], [Npx font], [auto-dismiss after Ns]
+    - If [network error], [specific recovery behavior]
+  </error_handling>
 
-- [What this feature explicitly does NOT include]
-- [Features to be addressed in future increments]
-- [Technical limitations accepted for MVP]
+  <responsive_design>
+    - Below [N]px: [specific layout change]
+    - Above [N]px: [specific layout change]
+    - Minimum supported viewport: [N]px
+    - All touch targets at least 44x44px
+  </responsive_design>
 
-## Technical Notes
+  <accessibility>
+    - [Element] has aria-label "[exact label text]"
+    - [Interactive element] uses role="[role]" with [aria attributes]
+    - All color combinations meet WCAG 2.1 AA (4.5:1 normal text)
+    - Focus indicators: [Npx] solid [#hex], [Npx] offset
+    - [Modal/dialog] traps focus; Escape closes it
+  </accessibility>
 
-### Dependencies
-- [External service/API]
-- [Internal module]
+  <initial_states>
+    - First load: [exact visual description with colors, sizes, text content]
+    - Empty state: [exact message text] centered in [#hex color]
+    - Loading: [specific animation description with timing]
+  </initial_states>
 
-### Constraints
-- [Performance requirement]
-- [Security consideration]
+  <security_and_compliance>
+    - [Input validation rule with specific constraint]
+    - [Authentication/authorization requirement]
+    - [Data sanitization rule]
+  </security_and_compliance>
 
-### Architecture Decisions
-- [Key design choice and rationale]
+  <performance_and_capacity>
+    - p95 [operation] latency: under [N]ms
+    - Maximum [resource]: [N] [unit]
+    - Maximum concurrent [operations]: [N] (queued beyond that)
+  </performance_and_capacity>
 
-## Non-Functional Requirements
+  <operational_constraints>
+    - [Runtime/platform requirement]
+    - [Infrastructure constraint]
+  </operational_constraints>
 
-- **Performance**: [Measurable target, e.g., "Scanner classifies 500 skills in < 100ms"]
-- **Accessibility**: [Requirements if UI-facing, e.g., "All interactive elements keyboard-navigable"]
-- **Security**: [Relevant security considerations, e.g., "No user input reaches path resolution unsanitized"]
-- **Compatibility**: [Platform/browser/OS constraints, e.g., "Works on Windows, macOS, Linux path formats"]
+  <anti_requirements>
+    - Must not [security anti-pattern] (reason: [security/reliability])
+    - Must not [dangerous operation] under any circumstance
+    - Must not [data handling violation]
+  </anti_requirements>
 
-## Edge Cases
+  <technology_stack>
+    - Frontend: [framework] with [build tool], [CSS approach]
+    - Backend: [runtime] with [framework]
+    - Database: [engine] with [driver/ORM]
+    - [Other]: [specifics]
+  </technology_stack>
 
-- [Edge case 1]: [Expected behavior, e.g., "Empty input returns empty result set"]
-- [Edge case 2]: [Expected behavior, e.g., "Symlinked directories resolve to their target path"]
-- [Edge case 3]: [Expected behavior, e.g., "Case-insensitive filesystem matching on macOS/Windows"]
+  <non_functional_requirements>
+    - [Performance target with units, e.g., "API response time under 200ms at p95"]
+    - [Scalability target, e.g., "Support 100 concurrent users"]
+    - [Reliability target, e.g., "99.9% uptime"]
+  </non_functional_requirements>
 
-## Risks
+  <edge_cases>
+    - [Boundary condition]: [expected behavior, e.g., "Empty file (0 bytes): reject with error"]
+    - [Unusual input]: [expected behavior with specific sanitization rules]
+    - [Race condition]: [expected behavior with specific handling]
+    - [Cleanup scenario]: [expected behavior with timing]
+  </edge_cases>
 
-| Risk | Probability | Impact | Severity | Mitigation |
-|------|-------------|--------|----------|------------|
-| [Risk description] | [0.0-1.0] | [1-10] | [P×I score] | [Strategy] |
-| [Risk description] | [0.0-1.0] | [1-10] | [P×I score] | [Strategy] |
+  <risks>
+    - [Risk description] (P=[0.0-1.0], I=[1-10], mitigation: [specific strategy])
+    - [Risk description] (P=[0.0-1.0], I=[1-10], mitigation: [specific strategy])
+  </risks>
 
-## Success Metrics
+  <success_metrics>
+    - [Metric]: [target value with units]
+    - [Metric]: [target value with units]
+    - [Qualitative success criteria with measurable proxy]
+  </success_metrics>
 
-- [Metric 1]: [Target value]
-- [Metric 2]: [Target value]
-- [Qualitative success criteria]
+  <!-- DAG: user story dependencies (omit if no dependencies) -->
+  <dependencies>
+    - US-002 depends on US-001 ([reason])
+  </dependencies>
+
+</increment>
 ```
 
 ## Guidelines
@@ -108,7 +163,7 @@ created: YYYY-MM-DD
 ### User Story Sizing
 - **Small**: 1-2 tasks, 1-2 days
 - **Medium**: 3-5 tasks, 3-5 days
-- **Large**: 6+ tasks - consider splitting
+- **Large**: 6+ tasks -- consider splitting
 
 ### Acceptance Criteria Count
 - Minimum: 2 per user story
@@ -134,7 +189,7 @@ Examples:
 
 **Every AC must be unambiguous and single-outcome:**
 
-- **No "or" conditions**: "disabled or hidden" is ambiguous — pick ONE expected behavior
+- **No "or" conditions**: "disabled or hidden" is ambiguous -- pick ONE expected behavior
   - Bad: `AC-US1-01: Button is disabled or hidden`
   - Good: `AC-US1-01: Button has the disabled attribute and shows tooltip "Not available"`
 - **Measurable outcomes**: Use concrete values, not subjective descriptions
@@ -142,18 +197,45 @@ Examples:
   - Good: `AC-US1-01: Card text has opacity 0.7 and uses var(--text-tertiary) color`
 - **BDD format preferred**: `Given [precondition], when [action], then [single expected result]`
 - **One assertion per AC**: If you need to verify multiple things, split into separate ACs
-- **No subjective verbs**: Avoid "looks good", "is clear", "feels responsive" — use testable criteria
+- **No subjective verbs**: Avoid "looks good", "is clear", "feels responsive" -- use testable criteria
+
+### Mandatory Hardening Blocks
+
+Every spec.md MUST include all 8 hardening blocks as XML tags. The validator flags missing blocks as errors:
+
+1. `<error_handling>` -- user-visible error behavior with exact messages, colors, timing
+2. `<responsive_design>` -- breakpoints, layout changes, minimum viewport
+3. `<accessibility>` -- ARIA labels, roles, focus management, WCAG compliance
+4. `<initial_states>` -- first load, empty state, loading state with exact visuals
+5. `<security_and_compliance>` -- input validation, auth, data sanitization
+6. `<performance_and_capacity>` -- latency targets, resource limits, concurrency
+7. `<operational_constraints>` -- runtime, platform, infrastructure requirements
+8. `<anti_requirements>` -- things the system must NOT do
+
+### Quantified Specs Rule
+
+Hardening blocks and acceptance criteria must use **measurable values**, not vague adjectives. The validator warns on unquantified terms:
+
+- Bad: "fast response time", "smooth animation", "small file size"
+- Good: "response time under 200ms at p95", "animation at 60fps with 300ms duration", "file size under 10MB"
 
 ### Mandatory Spec Sections
 
-Every spec.md MUST include these sections (QA scoring penalizes missing sections):
+Every spec.md MUST include these XML sections (QA scoring penalizes missing sections):
 
-1. **Problem Statement** — why this exists
-2. **Goals** — what success looks like
-3. **User Stories** — with ACs in BDD format
-4. **Out of Scope** — explicit boundaries
-5. **Non-Functional Requirements** — performance, security, accessibility, compatibility
-6. **Edge Cases** — boundary conditions, error states, unusual scenarios
-7. **Risks** — P×I scored risk table with mitigations
-8. **Technical Notes** — dependencies, constraints, architecture decisions
-9. **Success Metrics** — measurable outcomes
+1. `<problem_statement>` -- why this exists
+2. `<goals>` -- what success looks like (measurable)
+3. `<user_stories>` -- with ACs in BDD format inside `<acceptance_criteria>` tags
+4. `<out_of_scope>` -- explicit boundaries with architectural hooks
+5. `<error_handling>` through `<anti_requirements>` -- all 8 hardening blocks
+6. `<non_functional_requirements>` -- performance, security, accessibility, compatibility
+7. `<edge_cases>` -- boundary conditions, error states, unusual scenarios
+8. `<risks>` -- P x I scored with mitigations
+9. `<success_metrics>` -- measurable outcomes
+
+### Dependencies Section
+
+If user stories have ordering dependencies, include `<dependencies>`:
+- Format: `- US-NNN depends on US-NNN (reason)`
+- The DAG validator checks for cycles, missing references, and self-dependencies
+- Omit the section entirely if all stories are independent
