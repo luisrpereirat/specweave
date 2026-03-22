@@ -86,6 +86,7 @@ Before starting work on any user story, verify that its prerequisites are satisf
    - Predecessor has open defects in `defects.json` -> WARN: "US-MMM has N open defects that may affect US-NNN."
 5. **Do not block**, but surface the warnings prominently. The user may have valid reasons to proceed (e.g., working on non-dependent ACs within the story).
 6. **Suggest execution order**: If multiple tasks are ready, prefer tasks belonging to stories earlier in the topological execution order (roots first, then their dependents).
+7. **User override**: If the user explicitly requests a specific story or task (e.g., "work on US-003" or "skip dependency checks"), proceed regardless of dependency status. Log a note: "Dependency check bypassed at user request -- US-003 has unsatisfied predecessors: [list]." This allows quick concept prototyping or out-of-order work when the user knows what they are doing.
 
 ### Step 2.5: PR-Based Branch Setup (conditional)
 
