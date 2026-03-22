@@ -53,20 +53,20 @@ Every feature starts as a specification — user stories, acceptance criteria, a
 
 12 production projects shipped in 3 months. 5 in the App Store.
 
-| App | Platform | What It Does |
-|-----|----------|-------------|
-| [**EasyChamp**](https://easychamp.com) | Web (GCP) | Enterprise sports league management. 20+ microservices, ML video analytics. 4 years in production. |
-| [**SketchMate**](https://apps.apple.com/app/sketchmate-ai-draw-game/id6760250072) | App Store | AI drawing game — multi-model evaluation judges player art semantically. |
-| [**Lulla**](https://apps.apple.com/app/lulla-calm-baby-anywhere/id6756977992) | App Store | Baby sleep app with Apple Watch. ML cry classification (tired/hungry/pain). |
-| [**Football 2026**](https://apps.apple.com/app/football-2026-travel/id6757258711) | App Store + Web | World Cup 2026 companion. AI travel planner, live tickets, team stats. |
-| [**SkillUp Football**](https://apps.apple.com/app/skillup-football/id6756978002) | App Store | Coaches monetize training via Stripe. Instagram-like feed, scheduling. |
-| [**BizZone**](https://apps.apple.com/app/business-zone/id6756091030) | App Store | Student & business events with AI-powered news generation. |
-| [**EduFeed**](https://edufeed-jet.vercel.app/) | Web | NotebookLM meets Zoom. Upload videos, get quizzes, flashcards, live rooms. |
-| [**JobWeave**](https://jobweave.ai) | Web | AI-powered job search. Smart matching, resume optimization. |
-| [**SpecWeave**](https://github.com/anton-abyzov/specweave) | npm | The framework itself. 600+ increments, 538+ releases. |
-| [**SpecWeave Umbrella**](https://github.com/anton-abyzov/specweave-umb) | GitHub | Multi-repo orchestration workspace for all repositories. |
-| [**vskill**](https://github.com/anton-abyzov/vskill) | npm | Package manager for AI skills. Security scanning, 49 platforms. |
-| [**verified-skill.com**](https://verified-skill.com) | Web | Skill marketplace & studio. 105K+ verified skills, eval system. |
+| App                                                                               | Platform        | What It Does                                                                                       |
+|-----------------------------------------------------------------------------------|-----------------|----------------------------------------------------------------------------------------------------|
+| [**EasyChamp**](https://easychamp.com)                                            | Web (GCP)       | Enterprise sports league management. 20+ microservices, ML video analytics. 4 years in production. |
+| [**SketchMate**](https://apps.apple.com/app/sketchmate-ai-draw-game/id6760250072) | App Store       | AI drawing game — multi-model evaluation judges player art semantically.                           |
+| [**Lulla**](https://apps.apple.com/app/lulla-calm-baby-anywhere/id6756977992)     | App Store       | Baby sleep app with Apple Watch. ML cry classification (tired/hungry/pain).                        |
+| [**Football 2026**](https://apps.apple.com/app/football-2026-travel/id6757258711) | App Store + Web | World Cup 2026 companion. AI travel planner, live tickets, team stats.                             |
+| [**SkillUp Football**](https://apps.apple.com/app/skillup-football/id6756978002)  | App Store       | Coaches monetize training via Stripe. Instagram-like feed, scheduling.                             |
+| [**BizZone**](https://apps.apple.com/app/business-zone/id6756091030)              | App Store       | Student & business events with AI-powered news generation.                                         |
+| [**EduFeed**](https://edufeed-jet.vercel.app/)                                    | Web             | NotebookLM meets Zoom. Upload videos, get quizzes, flashcards, live rooms.                         |
+| [**JobWeave**](https://jobweave.ai)                                               | Web             | AI-powered job search. Smart matching, resume optimization.                                        |
+| [**SpecWeave**](https://github.com/anton-abyzov/specweave)                        | npm             | The framework itself. 600+ increments, 538+ releases.                                              |
+| [**SpecWeave Umbrella**](https://github.com/anton-abyzov/specweave-umb)           | GitHub          | Multi-repo orchestration workspace for all repositories.                                           |
+| [**vskill**](https://github.com/anton-abyzov/vskill)                              | npm             | Package manager for AI skills. Security scanning, 49 platforms.                                    |
+| [**verified-skill.com**](https://verified-skill.com)                              | Web             | Skill marketplace & studio. 105K+ verified skills, eval system.                                    |
 
 [Browse increments on GitHub](https://github.com/anton-abyzov/specweave/tree/develop/.specweave/increments) — full transparency.
 
@@ -78,8 +78,11 @@ Every feature starts as a specification — user stories, acceptance criteria, a
 npm install -g specweave       # Node.js 20.12.0+
 cd your-project
 specweave init .
+
 # Then in Claude Code, Cursor, Copilot, or any AI tool:
+
 # "Build me a user authentication system"
+
 ```
 
 <br/>
@@ -128,16 +131,16 @@ The `- [ ] AC-US1-01:` checkbox pattern is preserved exactly from upstream, so t
 
 Every spec must include all 8 hardening sections as top-level XML tags. The validator reports ERROR if any are missing:
 
-| Block | What it covers |
-|-------|---------------|
-| `<error_handling>` | Error states, retry behavior, user-facing messages |
-| `<responsive_design>` | Breakpoints, layout changes, touch targets |
-| `<accessibility>` | ARIA, focus management, color contrast |
-| `<initial_states>` | Empty states, loading states, first-load experience |
-| `<security_and_compliance>` | Auth, data protection, input sanitization |
-| `<performance_and_capacity>` | Latency targets, throughput limits, capacity |
-| `<operational_constraints>` | Runtime requirements, deployment model |
-| `<anti_requirements>` | Explicit "must not" constraints |
+| Block                        | What it covers                                      |
+|------------------------------|-----------------------------------------------------|
+| `<error_handling>`           | Error states, retry behavior, user-facing messages  |
+| `<responsive_design>`        | Breakpoints, layout changes, touch targets          |
+| `<accessibility>`            | ARIA, focus management, color contrast              |
+| `<initial_states>`           | Empty states, loading states, first-load experience |
+| `<security_and_compliance>`  | Auth, data protection, input sanitization           |
+| `<performance_and_capacity>` | Latency targets, throughput limits, capacity        |
+| `<operational_constraints>`  | Runtime requirements, deployment model              |
+| `<anti_requirements>`        | Explicit "must not" constraints                     |
 
 Vague adjectives ("fast", "smooth", "nice") in hardening blocks and acceptance criteria trigger quantified spec warnings, nudging authors toward measurable values.
 
@@ -196,12 +199,12 @@ Each increment gets a `test-manifest.json` mapping every AC to its test automati
 
 ### Files Added
 
-| File | Purpose |
-|------|---------|
-| `src/validators/dependency-dag-validator.ts` | DAG parsing, cycle detection, topological sort |
-| `src/core/increment/defect-manager.ts` | Defect CRUD, 3-state lifecycle, metadata logging |
-| `src/core/increment/test-manifest-manager.ts` | Test manifest CRUD, coverage computation |
-| `src/core/types/defect.ts` | TypeScript interfaces for defects and test manifests |
+| File                                          | Purpose                                              |
+|-----------------------------------------------|------------------------------------------------------|
+| `src/validators/dependency-dag-validator.ts`  | DAG parsing, cycle detection, topological sort       |
+| `src/core/increment/defect-manager.ts`        | Defect CRUD, 3-state lifecycle, metadata logging     |
+| `src/core/increment/test-manifest-manager.ts` | Test manifest CRUD, coverage computation             |
+| `src/core/types/defect.ts`                    | TypeScript interfaces for defects and test manifests |
 
 ### Files Modified
 
@@ -216,16 +219,16 @@ Key integration points (30 files total, +2853/-531 lines):
 
 ## How It Compares
 
-| Capability | Cursor Rules | Copilot Instructions | Windsurf | Cline | Vibe Coding | **SpecWeave** |
-|------------|:---:|:---:|:---:|:---:|:---:|:---:|
-| Structured specs (spec + plan + tasks) | — | — | — | — | — | **Yes** |
-| Quality gates (Grill + Judge-LLM + 130 rules) | — | — | — | — | — | **Yes** |
-| Autonomous execution (hours, unattended) | — | — | — | — | — | **Yes** |
-| Multi-agent teams (parallel, contract-first) | — | — | — | — | — | **Yes** |
-| External sync (GitHub / JIRA / ADO) | — | — | — | — | — | **Yes** |
-| TDD enforcement (strict red-green-refactor) | — | — | — | — | — | **Yes** |
-| LSP code intelligence (198x faster) | — | — | — | — | — | **Yes** |
-| Self-improving skills (learns from corrections) | — | — | — | — | — | **Yes** |
+| Capability                                      | Cursor Rules | Copilot Instructions | Windsurf | Cline | Vibe Coding | **SpecWeave** |
+|-------------------------------------------------|:------------:|:--------------------:|:--------:|:-----:|:-----------:|:-------------:|
+| Structured specs (spec + plan + tasks)          |      —       |          —           |    —     |   —   |      —      |    **Yes**    |
+| Quality gates (Grill + Judge-LLM + 130 rules)   |      —       |          —           |    —     |   —   |      —      |    **Yes**    |
+| Autonomous execution (hours, unattended)        |      —       |          —           |    —     |   —   |      —      |    **Yes**    |
+| Multi-agent teams (parallel, contract-first)    |      —       |          —           |    —     |   —   |      —      |    **Yes**    |
+| External sync (GitHub / JIRA / ADO)             |      —       |          —           |    —     |   —   |      —      |    **Yes**    |
+| TDD enforcement (strict red-green-refactor)     |      —       |          —           |    —     |   —   |      —      |    **Yes**    |
+| LSP code intelligence (198x faster)             |      —       |          —           |    —     |   —   |      —      |    **Yes**    |
+| Self-improving skills (learns from corrections) |      —       |          —           |    —     |   —   |      —      |    **Yes**    |
 
 Cursor tells AI "use Tailwind." SpecWeave tells AI "build a checkout flow with 5 acceptance criteria, test it, review it, sync to JIRA, and close."
 
@@ -277,13 +280,13 @@ npx vskill eval run my-skill                  # Run eval suite
 
 ## Core Commands
 
-| You say | SpecWeave runs |
-|---------|---------------|
-| "Build me X" | `sw:increment` → spec + plan + tasks |
-| "Go ahead" | `sw:auto` → autonomous execution |
-| "Ship it" | `sw:done` → quality gates + close |
-| "Split into teams" | `sw:team-lead` → parallel agents |
-| "Review the code" | `sw:code-reviewer` → 6 parallel reviewers |
+| You say            | SpecWeave runs                            |
+|--------------------|-------------------------------------------|
+| "Build me X"       | `sw:increment` → spec + plan + tasks      |
+| "Go ahead"         | `sw:auto` → autonomous execution          |
+| "Ship it"          | `sw:done` → quality gates + close         |
+| "Split into teams" | `sw:team-lead` → parallel agents          |
+| "Review the code"  | `sw:code-reviewer` → 6 parallel reviewers |
 
 [Full command reference](https://spec-weave.com/docs/commands/overview)
 
