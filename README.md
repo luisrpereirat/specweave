@@ -88,6 +88,8 @@ specweave init .
 
 This fork adds four capabilities on top of upstream SpecWeave. All changes are backward-compatible -- existing markdown specs continue to work via automatic format detection.
 
+The spec-first and feature-request workflow is inspired by the [Anthropic Autonomous Coding Quickstart](https://github.com/anthropics/claude-quickstarts/tree/main/autonomous-coding), which introduced the two-agent pattern (initializer + coding agent) with `app_spec.txt` as the specification source and `feature_list.json` as a structured test-case tracker. Our XML-fenced format extends that plain-text spec concept with machine-parseable section boundaries, mandatory hardening blocks, and dependency DAGs while preserving the human-editable, no-tooling-required philosophy.
+
 ### XML-Fenced Spec Format
 
 Specs use XML tags as section fences with free-form prose inside. No DTD, no namespaces, no `<?xml>` declaration -- just clear scope boundaries that are easy to hand-edit and machine-parse.
