@@ -6,6 +6,10 @@
 </p>
 
 <p align="center">
+  <em>Fork of <a href="https://github.com/anton-abyzov/specweave">anton-abyzov/specweave</a> with XML spec format, DAG dependencies, defect tracking, and regression tracking.</em>
+</p>
+
+<p align="center">
   <a href="https://www.npmjs.com/package/specweave"><img src="https://img.shields.io/npm/v/specweave?color=brightgreen" alt="npm" /></a>
   <img src="https://img.shields.io/badge/increments-600+-blue" alt="600+ increments" />
   <img src="https://img.shields.io/badge/production_apps-10+-green" alt="10+ production apps" />
@@ -77,6 +81,134 @@ specweave init .
 # Then in Claude Code, Cursor, Copilot, or any AI tool:
 # "Build me a user authentication system"
 ```
+
+<br/>
+
+## Fork Enhancements
+
+This fork adds four capabilities on top of upstream SpecWeave. All changes are backward-compatible -- existing markdown specs continue to work via automatic format detection.
+
+### XML-Fenced Spec Format
+
+Specs use XML tags as section fences with free-form prose inside. No DTD, no namespaces, no `<?xml>` declaration -- just clear scope boundaries that are easy to hand-edit and machine-parse.
+
+```xml
+<increment>
+  <id>0042-file-upload</id>
+  <title>File Upload Feature</title>
+
+  <user_stories>
+    <user_story id="US-001" project="my-app">
+      As an end user I want to upload files via drag-and-drop
+
+      <acceptance_criteria>
+        - [ ] AC-US1-01: Given a file under 10MB, when dragged onto the
+          drop zone, then upload starts within 200ms
+        - [ ] AC-US1-02: Given a file over 10MB, then error displays
+      </acceptance_criteria>
+    </user_story>
+  </user_stories>
+
+  <error_handling>
+    - If the API returns a timeout after 5000ms, show a "Retry" button
+  </error_handling>
+  <!-- ... 7 more mandatory hardening blocks ... -->
+
+  <dependencies>
+    - US-002 depends on US-001 (file management requires upload)
+  </dependencies>
+</increment>
+```
+
+The `- [ ] AC-US1-01:` checkbox pattern is preserved exactly from upstream, so the AC status manager and shell hook require no changes.
+
+### 8 Mandatory Hardening Blocks
+
+Every spec must include all 8 hardening sections as top-level XML tags. The validator reports ERROR if any are missing:
+
+| Block | What it covers |
+|-------|---------------|
+| `<error_handling>` | Error states, retry behavior, user-facing messages |
+| `<responsive_design>` | Breakpoints, layout changes, touch targets |
+| `<accessibility>` | ARIA, focus management, color contrast |
+| `<initial_states>` | Empty states, loading states, first-load experience |
+| `<security_and_compliance>` | Auth, data protection, input sanitization |
+| `<performance_and_capacity>` | Latency targets, throughput limits, capacity |
+| `<operational_constraints>` | Runtime requirements, deployment model |
+| `<anti_requirements>` | Explicit "must not" constraints |
+
+Vague adjectives ("fast", "smooth", "nice") in hardening blocks and acceptance criteria trigger quantified spec warnings, nudging authors toward measurable values.
+
+### DAG Dependency Validation
+
+User stories can declare dependencies via a `<dependencies>` section. The DAG validator runs automatically during `sw:validate` and `sw:done` Gate 0:
+
+- **Cycle detection** -- DFS-based, reports the cycle path
+- **Missing reference check** -- dependency references a US-ID not in `<user_stories>`
+- **Self-dependency check** -- a story depending on itself
+- **Topological sort** -- deterministic execution order for `sw:do` task selection
+
+The `sw:do` skill checks predecessor AC satisfaction before starting work on a story, warning if predecessors have unchecked ACs or open defects. Users can override with an explicit request for out-of-order work.
+
+Dependency authoring guidance is built into the PM skill templates: direct-only edges, real technical prerequisites only, short chains (3-4 max depth), mandatory reasons.
+
+### Per-Increment Defect Tracking
+
+Each increment gets a `defects.json` with a 3-state lifecycle:
+
+```
+open  -->  fixed  -->  verified
+(grill)    (sw:do)     (sw:grill re-run)
+```
+
+- `sw:grill` auto-creates defects on AC compliance failures
+- `sw:do` prioritizes open defects over new feature work
+- `sw:done` Gate 0 blocks closure until all defects are verified
+- Defects are append-only with `DEF-NNN` IDs, linked to AC-IDs and task-IDs
+
+### Per-AC Regression Tracking
+
+Each increment gets a `test-manifest.json` mapping every AC to its test automation:
+
+```json
+{
+  "acTests": [
+    {
+      "acId": "AC-US1-01",
+      "automationType": "e2e",
+      "testFile": "tests/e2e/upload.spec.ts",
+      "lastRunResult": "pass"
+    }
+  ],
+  "coverage": {
+    "totalACs": 5,
+    "automatedACs": 3,
+    "automationPercentage": 60
+  }
+}
+```
+
+- Tracks automation type (`manual` / `unit` / `e2e`), test file, and last run result per AC
+- Computes automation coverage percentage
+- `sw:done` warns if automation coverage falls below the configured target (default 60%)
+
+### Files Added
+
+| File | Purpose |
+|------|---------|
+| `src/validators/dependency-dag-validator.ts` | DAG parsing, cycle detection, topological sort |
+| `src/core/increment/defect-manager.ts` | Defect CRUD, 3-state lifecycle, metadata logging |
+| `src/core/increment/test-manifest-manager.ts` | Test manifest CRUD, coverage computation |
+| `src/core/types/defect.ts` | TypeScript interfaces for defects and test manifests |
+
+### Files Modified
+
+Key integration points (30 files total, +2853/-531 lines):
+
+- **Parsers**: `spec-parser.ts`, `ac-progress-sync.ts`, `ac-embedder.ts`, `spec-splitter.ts` -- dual-format support (XML primary, markdown fallback)
+- **Validators**: `three-file-validator.ts`, `ac-presence-validator.ts`, `completion-validator.ts` -- hardening blocks, quantified specs, DAG gate, defect gate
+- **Templates**: `AGENTS.md.template`, `tasks.md.template`, `template-creator.ts` -- XML format references
+- **Skills**: PM, do, done, grill, increment, validate, team-lead -- updated for XML format, dependency checks, defect/test-manifest workflows
 
 <br/>
 
