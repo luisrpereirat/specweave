@@ -114,6 +114,18 @@ any tag block.
 </increment>
 ```
 
+## Dependency Inference
+
+After writing all user stories, analyze their relationships to populate `<dependencies>`:
+
+1. **Identify data flow.** If Story B consumes an API, schema, or data artifact that Story A produces, then `US-B depends on US-A`.
+2. **Identify shared infrastructure.** If Story B requires a component, service, or database table that Story A creates, declare the dependency.
+3. **Skip transitive edges.** If A -> B -> C, do not add A -> C. The graph implies it.
+4. **Default to independent.** If two stories share no technical prerequisite, leave them independent. Independent stories can execute in parallel, which is faster.
+5. **Validate mentally.** For each dependency, ask: "Could a developer start Story B with Story A incomplete and still make meaningful progress?" If yes, the dependency is not real -- remove it.
+
+If all stories are independent, omit the `<dependencies>` section entirely.
+
 ## Chunking Large Specs
 
 **If spec has 6+ user stories, CHUNK IT:**

@@ -73,6 +73,20 @@ This ensures the execution loop stays focused on the contextually correct increm
    ```
    If fails: manually add ACs to spec.md, then retry. Do NOT proceed without ACs in spec.md.
 
+### Step 2.8: Dependency Satisfaction Check
+
+Before starting work on any user story, verify that its prerequisites are satisfied:
+
+1. **Parse the `<dependencies>` section** from spec.md. If absent, all stories are independent -- skip this step.
+2. **For the target story**, find all stories it depends on (direct predecessors only -- the validator already caught cycles and missing refs).
+3. **Check predecessor AC status**: For each predecessor story, verify that ALL its acceptance criteria are marked `[x]` in spec.md.
+4. **Decision matrix**:
+   - All predecessor ACs are `[x]` -> proceed normally
+   - Some predecessor ACs are `[ ]` -> WARN the user: "US-NNN depends on US-MMM, which has N unchecked ACs. Starting work may be premature."
+   - Predecessor has open defects in `defects.json` -> WARN: "US-MMM has N open defects that may affect US-NNN."
+5. **Do not block**, but surface the warnings prominently. The user may have valid reasons to proceed (e.g., working on non-dependent ACs within the story).
+6. **Suggest execution order**: If multiple tasks are ready, prefer tasks belonging to stories earlier in the topological execution order (roots first, then their dependents).
+
 ### Step 2.5: PR-Based Branch Setup (conditional)
 
 Check push strategy:

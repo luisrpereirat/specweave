@@ -239,3 +239,33 @@ If user stories have ordering dependencies, include `<dependencies>`:
 - Format: `- US-NNN depends on US-NNN (reason)`
 - The DAG validator checks for cycles, missing references, and self-dependencies
 - Omit the section entirely if all stories are independent
+
+#### Dependency Authoring Principles
+
+The dependency model should be **intentionally boring** -- easy to reason about and easy to diff:
+
+1. **Direct prerequisites only.** If US-003 depends on US-002 and US-002 depends on US-001, do NOT add `US-003 depends on US-001`. Transitive dependencies are implied by the graph. Adding them creates redundant edges that are hard to maintain and obscure the real structure.
+
+2. **Only real technical prerequisites.** A dependency means "this story cannot start until the other is done." Do not add ordering preferences or nice-to-haves. Ask: "Would starting this story without the other being complete cause a build failure, missing API, or data integrity issue?" If no, they are independent -- leave them independent so they can run in parallel.
+
+3. **Keep chains short.** Aim for a maximum depth of 3-4 stories in any dependency chain. Long chains create sequential bottlenecks. If you find yourself writing a chain of 5+, reconsider whether some stories can be parallelized or merged.
+
+4. **Reason is mandatory context.** The parenthetical reason (e.g., `(file management requires upload capability)`) must explain the **technical** reason for the ordering, not just restate the dependency. Good: `(API routes need DB schema)`. Bad: `(US-002 comes after US-001)`.
+
+5. **Review on insertion.** When a new user story is added mid-increment, review existing dependencies. The new story may need to depend on existing stories, or existing stories may need to depend on the new one. Update the `<dependencies>` section and re-validate.
+
+6. **Diamond shapes are fine.** Two stories depending on the same prerequisite, then converging on a shared successor, is a valid and common pattern. The DAG validator handles this correctly.
+
+#### What the DAG Validator Checks
+
+The validator runs automatically during `sw:validate` and `sw:done` Gate 0:
+
+| Check | Severity | What it means |
+|-------|----------|---------------|
+| Cycle detected | ERROR (blocking) | Two or more stories form a circular dependency -- impossible to execute |
+| Missing reference | ERROR (blocking) | A dependency references a US-ID that does not exist in `<user_stories>` |
+| Self-dependency | ERROR (blocking) | A story depends on itself |
+| No user stories found | WARNING | The spec has a `<dependencies>` section but no `<user_stories>` -- likely a structural error |
+| Disconnected nodes | INFO | Stories with no incoming or outgoing dependencies (roots and leaves) -- reported for awareness |
+
+The validator also computes a **topological execution order** -- the deterministic sequence in which stories can be implemented respecting all dependencies. The `sw:do` skill uses this to determine which story to work on next.
