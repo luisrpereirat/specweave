@@ -139,7 +139,7 @@ find .specweave/increments -maxdepth 2 -name "metadata.json" -exec grep -l '"sta
 specweave context projects
 ```
 
-Every US MUST have `**Project**:` field. For 2-level structures, also `**Board**:`.
+Every `<user_story>` tag MUST have a `project="..."` attribute. For 2-level structures, also `**Board**:`.
 
 ## Step 3: Create Increment
 
@@ -153,7 +153,7 @@ UMBRELLA_ENABLED=$(jq -r '.umbrella.enabled // false' .specweave/config.json 2>/
 
 if [ "$UMBRELLA_ENABLED" = "true" ]; then
   echo "UMBRELLA MODE: Increments go in UMBRELLA ROOT .specweave/increments/"
-  echo "The **Project**: field in each user story controls sync routing to child repos."
+  echo "The project=\"...\" attribute on each <user_story> tag controls sync routing to child repos."
   # List available child repos for context
   jq -r '.umbrella.childRepos[]? | "\(.name) (\(.path))"' .specweave/config.json 2>/dev/null
 elif [ -d "repositories" ]; then
@@ -169,7 +169,7 @@ fi
 
 **Umbrella mode (`umbrella.enabled: true`):**
 - ALL increments go in the umbrella root `.specweave/increments/` — NOT in child repos
-- The `**Project**:` field in each user story controls which repo receives sync (GitHub issues, JIRA tickets)
+- The `project="..."` attribute on each `<user_story>` tag controls which repo receives sync (GitHub issues, JIRA tickets)
 - Cross-cutting increments can span multiple child repos — each US targets a different project
 - Repos MUST be at `repositories/{ORG}/{repo-name}/` — NEVER directly under `repositories/`
 
@@ -220,29 +220,31 @@ Create files in order: metadata.json FIRST, then spec.md, plan.md, tasks.md.
 └── tasks.md       # REQUIRED - implementation
 ```
 
-### User Story Format
+### User Story Format (XML-Fenced)
 
-```markdown
-### US-001: Feature Name
-**Project**: my-app    # <- REQUIRED! Get from: specweave context projects
+```xml
+<user_story id="US-001" project="my-app">
+<!-- project attribute is REQUIRED! Get from: specweave context projects -->
 
 **As a** [role]
 **I want** [capability]
 **So that** [benefit]
 
-**Acceptance Criteria**:
+<acceptance_criteria>
 - [ ] **AC-US1-01**: [Criterion 1]
 - [ ] **AC-US1-02**: [Criterion 2]
+</acceptance_criteria>
+</user_story>
 ```
 
 ## Critical Rules
 
 1. **NEVER write spec.md/plan.md/tasks.md directly** when TeamCreate is available — delegate via TeamCreate + team-scoped Agent() calls; write spec files directly only as fallback
-2. **Project field is MANDATORY** — Every US MUST have `**Project**:` field
+2. **Project attribute is MANDATORY** — Every `<user_story>` tag MUST have a `project="..."` attribute
 3. **Use Template Creator CLI** (REQUIRED): `specweave create-increment --auto-id --name "name" --title "Title" --description "Desc" --project "my-app"`
 4. **Team-based delegation is the preferred path** when TeamCreate is available — but direct spec writing is the universal default that works with ALL AI tools
 5. **Increment naming** — Format: `####-descriptive-kebab-case`
-6. **Umbrella mode** — When `umbrella.enabled: true`, ALL increments go in the umbrella root `.specweave/increments/`. The `**Project**:` field per user story routes sync to child repos. Do NOT create increments in child repos.
+6. **Umbrella mode** — When `umbrella.enabled: true`, ALL increments go in the umbrella root `.specweave/increments/`. The `project="..."` attribute per `<user_story>` tag routes sync to child repos. Do NOT create increments in child repos.
 
 ## Step 3a: Deep Interview Mode (if enabled)
 
@@ -342,7 +344,7 @@ PM and Architect run concurrently in separate tmux panes. Architect starts codeb
 
 ```typescript
 // PM agent — writes spec.md
-// For umbrella mode, include: "UMBRELLA MODE: Child repos: [repo1, repo2, ...]. Design cross-cutting stories — assign **Project**: to each US based on which repo owns that work."
+// For umbrella mode, include: "UMBRELLA MODE: Child repos: [repo1, repo2, ...]. Design cross-cutting stories — assign project=\"...\" attribute on each <user_story> tag based on which repo owns that work."
 Agent({ team_name: "plan-XXXX-name", name: "pm", subagent_type: "sw:sw-pm", mode: "bypassPermissions", prompt: "Write spec for increment XXXX-name: <description>. Increment path: .specweave/increments/XXXX-name/.", description: "PM writes spec.md" })
 
 // Architect — spawned IN PARALLEL with PM

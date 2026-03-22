@@ -21,14 +21,15 @@ WORKFLOW:
   1. Read the feature description and any existing context
   2. Explore the codebase to understand the domain, existing patterns, and constraints
   3. Identify stakeholders, personas, and key use cases
-  4. Write user stories with acceptance criteria following the format:
-     ### US-NNN: Story Title
-     **Project**: [project-name]
+  4. Write user stories with acceptance criteria following the XML-fenced format:
+     <user_story id="US-NNN" project="[project-name]">
      **As a** [role]
      **I want** [capability]
      **So that** [benefit]
-     **Acceptance Criteria**:
+     <acceptance_criteria>
      - [ ] **AC-USNN-01**: [Criterion]
+     </acceptance_criteria>
+     </user_story>
   5. Define scope boundaries (in-scope vs out-of-scope)
   6. Write spec.md to [MASTER_INCREMENT_PATH]/spec.md
   7. Send PLAN_READY notification (do NOT wait for response):
@@ -43,7 +44,7 @@ WORKFLOW:
 
 RULES:
   - WRITE only spec.md — do not create plan.md or tasks.md (Architect and Planner own those)
-  - Every user story MUST have a **Project**: field
+  - Every `<user_story>` tag MUST have a `project="..."` attribute
   - Every AC MUST use the AC-USNN-NN format for bidirectional linking
   - Be specific in ACs — testable, not vague ("user can log in" not "auth works")
   - Consider edge cases, error states, and non-functional requirements

@@ -14,7 +14,7 @@
 4. ALL reports/scripts/logs → increment subfolders (NEVER at root!)
 5. metadata.json MUST exist BEFORE spec.md can be created
 6. tasks.md + spec.md = SOURCE OF TRUTH (update after every task!)
-7. EVERY User Story MUST have **Project**: field
+7. EVERY User Story MUST have `project` attribute on its <user_story> tag
 8. For 2-level structures: EVERY US also needs **Board**: field
 ```
 
@@ -358,34 +358,39 @@ Install/refresh skills: `specweave refresh-plugins`
 <!-- SECTION:usformat required -->
 ## User Story Format (CRITICAL for spec.md)
 
-**MANDATORY: Every User Story MUST have `**Project**:` field!**
+**MANDATORY: Every User Story MUST have `project` attribute on its `<user_story>` tag!**
 
-```markdown
-### US-001: Feature Name
-**Project**: my-app          # ← MANDATORY! Get from: specweave context projects
-**Board**: digital-ops       # ← MANDATORY for 2-level structures ONLY
+spec.md uses XML tags as section fences with free-form human-readable content inside:
 
-**As a** user
-**I want** [goal]
-**So that** [benefit]
+```xml
+<user_stories>
 
-**Acceptance Criteria**:
-- [ ] **AC-US1-01**: [Criterion 1]
-- [ ] **AC-US1-02**: [Criterion 2]
+  <user_story id="US-001" project="my-app">
+    As a user
+    I want [goal]
+    So that [benefit]
+
+    <acceptance_criteria>
+      - [ ] AC-US1-01: Given [precondition], when [action], then [result]
+      - [ ] AC-US1-02: [Criterion -- BDD format, no "or" conditions]
+    </acceptance_criteria>
+  </user_story>
+
+</user_stories>
 ```
 
-**How to get Project/Board values:**
+**How to get Project values:**
 ```bash
 # Run BEFORE creating any increment:
 specweave context projects
 
 # 1-level output (single project):
 # {"level":1,"projects":[{"id":"my-app"}]}
-# → Use: **Project**: my-app
+# → Use: project="my-app"
 
 # 2-level output (multi-project with boards):
 # {"level":2,"projects":[...],"boardsByProject":{"corp":[{"id":"digital-ops"}]}}
-# → Use: **Project**: corp AND **Board**: digital-ops
+# → Use: project="corp" (Board field still in tasks.md)
 ```
 <!-- /SECTION -->
 
@@ -398,7 +403,7 @@ specweave context projects
 1. Run `specweave context projects` → store project IDs
 2. `mkdir -p .specweave/increments/XXXX-feature`
 3. Create `metadata.json` (MUST be FIRST)
-4. Create `spec.md` — every US needs `**Project**:` field (see User Story Format)
+4. Create `spec.md` — every US needs `project` attribute on `<user_story>` tag (see User Story Format)
 5. Create `tasks.md` (task checklist with BDD tests)
 6. Optional: `plan.md` for complex features
 7. **Verify** tasks.md has `**Test Plan**:` for every task with testable ACs

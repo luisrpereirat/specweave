@@ -6,12 +6,12 @@
  * - Acceptance Criteria IDs (AC-US1-01, AC-US1-02, etc.)
  * - User Story titles and metadata
  *
+ * Supports XML-fenced format (primary) and legacy markdown heading format (fallback).
+ *
  * Used by AC coverage validator to cross-reference tasks with requirements.
  */
 
 import { readFileSync } from 'fs';
-import path from 'path';
-import * as yaml from 'js-yaml';
 
 /**
  * User Story metadata
@@ -25,6 +25,9 @@ export interface UserStory {
 
   /** Priority (P0, P1, P2, P3) */
   priority?: string;
+
+  /** Project that owns this user story */
+  project?: string;
 
   /** Acceptance Criteria IDs for this US */
   acceptanceCriteria: string[];
@@ -56,6 +59,8 @@ export interface SpecMetadata {
 /**
  * Parse spec.md to extract User Stories and Acceptance Criteria
  *
+ * Detects format automatically: XML-fenced (<increment>) or legacy markdown (---frontmatter---).
+ *
  * @param specPath - Path to spec.md file
  * @returns Spec metadata with User Stories and AC-IDs
  * @throws Error if spec.md cannot be read or is malformed
@@ -65,11 +70,20 @@ export function parseSpecMd(specPath: string): SpecMetadata {
     const content = readFileSync(specPath, 'utf-8');
     const lines = content.split('\n');
 
-    // Extract increment ID and title from frontmatter
-    const { incrementId, title } = parseFrontmatter(lines);
+    // Detect format: XML-fenced or legacy markdown
+    const isXmlFormat = content.includes('<increment>');
 
-    // Extract User Stories
-    const userStories = extractUserStories(lines);
+    let incrementId: string;
+    let title: string;
+    let userStories: UserStory[];
+
+    if (isXmlFormat) {
+      ({ incrementId, title } = parseXmlMetadata(content));
+      userStories = extractUserStoriesXml(content, lines);
+    } else {
+      ({ incrementId, title } = parseLegacyFrontmatter(lines));
+      userStories = extractUserStoriesLegacy(lines);
+    }
 
     // Flatten all AC-IDs
     const allACIds = userStories.flatMap(us => us.acceptanceCriteria);
@@ -85,23 +99,167 @@ export function parseSpecMd(specPath: string): SpecMetadata {
   }
 }
 
+// ---------------------------------------------------------------------------
+// XML-fenced format parsing (primary)
+// ---------------------------------------------------------------------------
+
 /**
- * Parse YAML frontmatter to extract increment ID and title
+ * Extract increment metadata from XML tags.
  *
- * Uses js-yaml library for robust, standard-compliant parsing.
- * Provides descriptive error messages for malformed YAML.
- *
- * @param lines - Lines of the spec.md file
- * @returns Increment ID and title from frontmatter
- * @throws Error if YAML is malformed or missing required fields
+ * Matches simple tag patterns like <id>0042-file-upload</id>.
  */
-function parseFrontmatter(lines: string[]): { incrementId: string; title: string } {
+function parseXmlMetadata(content: string): { incrementId: string; title: string } {
+  const idMatch = content.match(/<id>\s*(.+?)\s*<\/id>/);
+  const titleMatch = content.match(/<title>\s*(.+?)\s*<\/title>/);
+
+  if (!idMatch) {
+    throw new Error(
+      'No <id> tag found in spec.md.\n\n' +
+      'XML-fenced spec.md must contain:\n' +
+      '<increment>\n' +
+      '  <id>0001-feature-name</id>\n' +
+      '  <title>Feature Title</title>\n' +
+      '  ...\n' +
+      '</increment>'
+    );
+  }
+
+  const incrementId = idMatch[1].trim();
+
+  // Validate increment ID format (0001-feature-name, 0417J-name, 0111E-name)
+  const incrementIdRegex = /^[0-9]{4}[EGJA]?-[a-z0-9-]+$/;
+  if (!incrementIdRegex.test(incrementId)) {
+    throw new Error(
+      `Invalid increment ID format: "${incrementId}"\n\n` +
+      'Expected format: 4-digit number + hyphen + kebab-case name\n\n' +
+      'Valid examples:\n' +
+      '  - 0001-feature-name\n' +
+      '  - 0042-bug-fix\n' +
+      '  - 0099-refactor'
+    );
+  }
+
+  return {
+    incrementId,
+    title: titleMatch ? titleMatch[1].trim() : incrementId
+  };
+}
+
+/**
+ * Extract User Stories from XML-fenced format.
+ *
+ * Matches <user_story id="US-001" project="my-app"> blocks and extracts
+ * ACs from the <acceptance_criteria> section within each story.
+ */
+function extractUserStoriesXml(content: string, lines: string[]): UserStory[] {
+  const userStories: UserStory[] = [];
+
+  // Match <user_story> opening tags with attributes
+  const usTagRegex = /<user_story\s+id="(US-(?:[A-Za-z]{2,6}-)?\d{3,}E?)"\s*(?:project="([^"]*)")?\s*>/g;
+
+  // AC pattern: supports both bold and non-bold AC-IDs
+  // - [ ] AC-US1-01: ...  OR  - [ ] **AC-US1-01**: ...
+  const acRegex = /^-\s*\[[x ]\]\s*\*{0,2}(AC-US\d+E?-\d{2})\*{0,2}/;
+
+  // Priority pattern
+  const priorityRegex = /\*\*Priority\*\*:\s*(P[0-3])/;
+
+  let usMatch;
+  while ((usMatch = usTagRegex.exec(content)) !== null) {
+    const usId = usMatch[1];
+    const project = usMatch[2] || undefined;
+    const tagStartOffset = usMatch.index;
+
+    // Find the line number of this tag
+    const textBeforeTag = content.substring(0, tagStartOffset);
+    const lineNumber = textBeforeTag.split('\n').length;
+
+    // Find the closing </user_story> tag
+    const closingTag = '</user_story>';
+    const closeOffset = content.indexOf(closingTag, tagStartOffset);
+    if (closeOffset === -1) continue;
+
+    // Extract the block content between opening and closing tags
+    const blockContent = content.substring(tagStartOffset, closeOffset + closingTag.length);
+    const blockLines = blockContent.split('\n');
+
+    // Extract title from the first meaningful text line (As a... / story text)
+    let title = usId; // fallback
+    for (const bLine of blockLines) {
+      const trimmed = bLine.trim();
+      if (trimmed.startsWith('As a') || trimmed.startsWith('As an')) {
+        title = trimmed;
+        break;
+      }
+    }
+
+    // Extract ACs from this block
+    const acceptanceCriteria: string[] = [];
+    let priority: string | undefined;
+    let inAcSection = false;
+
+    for (const bLine of blockLines) {
+      const trimmed = bLine.trim();
+
+      // Detect AC section
+      if (trimmed === '<acceptance_criteria>' || trimmed.includes('<acceptance_criteria>')) {
+        inAcSection = true;
+        continue;
+      }
+      if (trimmed === '</acceptance_criteria>' || trimmed.includes('</acceptance_criteria>')) {
+        inAcSection = false;
+        continue;
+      }
+
+      if (inAcSection) {
+        const acMatch = trimmed.match(acRegex);
+        if (acMatch) {
+          acceptanceCriteria.push(acMatch[1]);
+        }
+      }
+
+      // Extract priority if present
+      const priMatch = bLine.match(priorityRegex);
+      if (priMatch && !priority) {
+        priority = priMatch[1];
+      }
+    }
+
+    userStories.push({
+      id: usId,
+      title,
+      project,
+      priority,
+      acceptanceCriteria,
+      lineNumber
+    });
+  }
+
+  return userStories;
+}
+
+// ---------------------------------------------------------------------------
+// Legacy markdown heading format (fallback)
+// ---------------------------------------------------------------------------
+
+/**
+ * Parse YAML frontmatter from legacy markdown format.
+ *
+ * Kept for backward compatibility with existing increments.
+ */
+function parseLegacyFrontmatter(lines: string[]): { incrementId: string; title: string } {
+  let yaml: typeof import('js-yaml') | undefined;
+  try {
+    yaml = require('js-yaml');
+  } catch {
+    // js-yaml not available; fall back to regex
+  }
+
   let inFrontmatter = false;
   const frontmatterLines: string[] = [];
   let frontmatterStart = -1;
   let frontmatterEnd = -1;
 
-  // Extract frontmatter lines between --- markers
   for (let i = 0; i < lines.length; i++) {
     const line = lines[i];
     if (line.trim() === '---') {
@@ -111,7 +269,7 @@ function parseFrontmatter(lines: string[]): { incrementId: string; title: string
         continue;
       } else {
         frontmatterEnd = i + 1;
-        break; // End of frontmatter
+        break;
       }
     }
     if (inFrontmatter) {
@@ -119,103 +277,82 @@ function parseFrontmatter(lines: string[]): { incrementId: string; title: string
     }
   }
 
-  // Validate frontmatter exists
   if (frontmatterLines.length === 0) {
     throw new Error(
-      'No YAML frontmatter found in spec.md.\n\n' +
-      'Spec.md must start with:\n' +
+      'No frontmatter or <increment> tag found in spec.md.\n\n' +
+      'Spec.md must use either XML-fenced format:\n' +
+      '<increment>\n' +
+      '  <id>0001-feature-name</id>\n' +
+      '  ...\n' +
+      '</increment>\n\n' +
+      'Or legacy YAML frontmatter:\n' +
       '---\n' +
-      'increment: 0001-feature-name\n' +
-      'title: Feature Title  # Optional\n' +
-      '---\n\n' +
-      'See CLAUDE.md Rule #16 for details.'
-    );
-  }
-
-  // Parse YAML using js-yaml library (robust, standard-compliant)
-  let frontmatter: any;
-  try {
-    frontmatter = yaml.load(frontmatterLines.join('\n'));
-  } catch (error: any) {
-    const errorMsg = error.message || String(error);
-    throw new Error(
-      `Malformed YAML frontmatter (lines ${frontmatterStart}-${frontmatterEnd}):\n\n` +
-      `${errorMsg}\n\n` +
-      'Common mistakes:\n' +
-      '  - Unclosed brackets: [unclosed\n' +
-      '  - Unclosed quotes: "unclosed\n' +
-      '  - Invalid syntax: key: {broken\n' +
-      '  - Mixing tabs and spaces in indentation\n\n' +
-      'Valid example:\n' +
-      '---\n' +
-      'increment: 0001-feature-name\n' +
-      'title: Feature Title\n' +
-      'feature_id: FS-001\n' +
-      '---\n\n' +
-      'See CLAUDE.md Rule #16 for details.'
-    );
-  }
-
-  // Validate frontmatter is an object
-  if (!frontmatter || typeof frontmatter !== 'object') {
-    throw new Error(
-      'YAML frontmatter must be an object with key-value pairs.\n\n' +
-      'Invalid: ---\n' +
-      'Just a string\n' +
-      '---\n\n' +
-      'Valid: ---\n' +
       'increment: 0001-feature-name\n' +
       '---'
     );
   }
 
-  // Validate required field: increment
-  if (!frontmatter.increment) {
+  // Try yaml library if available, fall back to regex
+  let incrementId: string | undefined;
+  let title: string | undefined;
+
+  if (yaml) {
+    try {
+      const parsed: any = yaml.load(frontmatterLines.join('\n'));
+      if (parsed && typeof parsed === 'object') {
+        incrementId = parsed.increment;
+        title = parsed.title;
+      }
+    } catch (error: any) {
+      throw new Error(
+        `Malformed YAML frontmatter (lines ${frontmatterStart}-${frontmatterEnd}):\n\n` +
+        `${error.message || String(error)}`
+      );
+    }
+  } else {
+    // Regex fallback when js-yaml is not available
+    for (const fLine of frontmatterLines) {
+      const idMatch = fLine.match(/^increment:\s*(.+)$/);
+      if (idMatch) incrementId = idMatch[1].trim();
+      const titleMatch = fLine.match(/^title:\s*["']?(.+?)["']?\s*$/);
+      if (titleMatch) title = titleMatch[1].trim();
+    }
+  }
+
+  if (!incrementId) {
     throw new Error(
       'Missing required field: increment\n\n' +
       'Add to frontmatter:\n' +
-      'increment: 0001-feature-name\n\n' +
-      'See CLAUDE.md Rule #16 for details.'
+      'increment: 0001-feature-name'
     );
   }
 
-  // Validate increment ID format (0001-feature-name, 0417J-name, 0111E-name)
+  // Validate increment ID format
   const incrementIdRegex = /^[0-9]{4}[EGJA]?-[a-z0-9-]+$/;
-  if (!incrementIdRegex.test(frontmatter.increment)) {
+  if (!incrementIdRegex.test(incrementId)) {
     throw new Error(
-      `Invalid increment ID format: "${frontmatter.increment}"\n\n` +
-      'Expected format: 4-digit number + hyphen + kebab-case name\n\n' +
-      'Valid examples:\n' +
-      '  - 0001-feature-name\n' +
-      '  - 0042-bug-fix\n' +
-      '  - 0099-refactor\n\n' +
-      'Invalid examples:\n' +
-      '  - 1-test (missing leading zeros)\n' +
-      '  - 0001_test (underscore instead of hyphen)\n' +
-      '  - 0001-Test (uppercase letters)\n' +
-      '  - 0001 (missing name)\n\n' +
-      'See CLAUDE.md Rule #16 for details.'
+      `Invalid increment ID format: "${incrementId}"\n\n` +
+      'Expected format: 4-digit number + hyphen + kebab-case name'
     );
   }
 
   return {
-    incrementId: frontmatter.increment,
-    title: frontmatter.title || frontmatter.increment
+    incrementId,
+    title: title || incrementId
   };
 }
 
 /**
- * Extract User Stories and their Acceptance Criteria
+ * Extract User Stories from legacy markdown heading format.
  */
-function extractUserStories(lines: string[]): UserStory[] {
+function extractUserStoriesLegacy(lines: string[]): UserStory[] {
   const userStories: UserStory[] = [];
   let currentUS: UserStory | null = null;
   let inACSection = false;
 
-  // Regex patterns (T-029: Support E suffix for external IDs)
-  // Updated: Support 3+ digits for US-XXX (Y2K fix)
-  const usHeaderRegex = /^###?\s+(US-(?:[A-Za-z]{2,6}-)?\d{3,}E?):\s*(.+)$/;  // ### US-001E: Title or ## US-SPE-001: Title
-  const acRegex = /^-\s*\[[x ]\]\s*\*\*(AC-US\d+E?-\d{2})\*\*/;  // - [ ] **AC-US1E-01**
+  // Regex patterns
+  const usHeaderRegex = /^###?\s+(US-(?:[A-Za-z]{2,6}-)?\d{3,}E?):\s*(.+)$/;
+  const acRegex = /^-\s*\[[x ]\]\s*\*{0,2}(AC-US\d+E?-\d{2})\*{0,2}/;
   const priorityRegex = /\*\*Priority\*\*:\s*(P[0-3])/;
 
   for (let i = 0; i < lines.length; i++) {
@@ -225,12 +362,10 @@ function extractUserStories(lines: string[]): UserStory[] {
     // Check for User Story header
     const usMatch = line.match(usHeaderRegex);
     if (usMatch) {
-      // Save previous US if exists
       if (currentUS) {
         userStories.push(currentUS);
       }
 
-      // Start new US
       currentUS = {
         id: usMatch[1],
         title: usMatch[2],
@@ -238,10 +373,19 @@ function extractUserStories(lines: string[]): UserStory[] {
         lineNumber
       };
       inACSection = false;
+
+      // Extract project from **Project**: field
+      for (let j = i + 1; j < Math.min(i + 5, lines.length); j++) {
+        const projMatch = lines[j].match(/\*\*Project\*\*:\s*(.+)/);
+        if (projMatch) {
+          currentUS.project = projMatch[1].trim();
+          break;
+        }
+      }
+
       continue;
     }
 
-    // Skip if no current US
     if (!currentUS) continue;
 
     // Check for Acceptance Criteria section
@@ -250,28 +394,26 @@ function extractUserStories(lines: string[]): UserStory[] {
       continue;
     }
 
-    // Check for end of AC section (next major section)
+    // Check for end of AC section
     if (line.startsWith('##') && !line.match(usHeaderRegex)) {
       inACSection = false;
     }
 
-    // Extract AC-IDs if in AC section
+    // Extract AC-IDs
     if (inACSection) {
       const acMatch = line.match(acRegex);
       if (acMatch) {
-        const acId = acMatch[1];
-        currentUS.acceptanceCriteria.push(acId);
+        currentUS.acceptanceCriteria.push(acMatch[1]);
       }
     }
 
-    // Extract priority if present
+    // Extract priority
     const priorityMatch = line.match(priorityRegex);
     if (priorityMatch && !currentUS.priority) {
       currentUS.priority = priorityMatch[1];
     }
   }
 
-  // Save last US
   if (currentUS) {
     userStories.push(currentUS);
   }

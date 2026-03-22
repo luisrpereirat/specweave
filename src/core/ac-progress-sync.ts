@@ -407,13 +407,20 @@ export async function closeIncrementIssues(
 
 /**
  * Parse all user story IDs from spec.md content.
- * Matches patterns like "### US-001:", "### US-002:" etc.
+ * Supports both XML-fenced format (<user_story id="US-001">) and legacy markdown (### US-001:).
  */
 export function parseAllUserStoryIds(content: string): string[] {
   const ids: string[] = [];
-  const pattern = /###\s+(US-(?:[A-Z]+-)*\d+):/g;
+  // XML format: <user_story id="US-001" ...>
+  const xmlPattern = /<user_story\s+id="(US-(?:[A-Za-z]+-)*\d+)"/g;
   let match;
-  while ((match = pattern.exec(content)) !== null) {
+  while ((match = xmlPattern.exec(content)) !== null) {
+    ids.push(match[1]);
+  }
+  if (ids.length > 0) return ids;
+  // Legacy markdown format: ### US-001:
+  const mdPattern = /###\s+(US-(?:[A-Z]+-)*\d+):/g;
+  while ((match = mdPattern.exec(content)) !== null) {
     ids.push(match[1]);
   }
   return ids;

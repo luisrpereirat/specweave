@@ -235,8 +235,8 @@ export async function embedACsFromLivingDocs(
   }
 
   // 5. Insert ACs into spec.md (before the final line or after "Implementation Summary")
-  // Check if ACs already exist
-  if (specContent.includes('## Acceptance Criteria')) {
+  // Check if ACs already exist (XML or legacy format)
+  if (specContent.includes('<acceptance_criteria>') || specContent.includes('## Acceptance Criteria')) {
     logger.warn('spec.md already contains Acceptance Criteria section - skipping');
     return totalACs;
   }
@@ -289,9 +289,13 @@ export function validateACsInSpec(specPath: string, expectedACCount: number, log
 
   const content = readFileSync(specPath, 'utf-8');
 
-  // Count ACs in spec.md
-  const acMatches = content.match(/^- \[[x ]\] \*\*AC-US\d+-\d+\*\*/gm);
-  const actualCount = acMatches ? acMatches.length : 0;
+  // Count ACs in spec.md -- support both bold (**AC-US1-01**:) and plain (AC-US1-01:) formats
+  const boldAcMatches = content.match(/^- \[[x ]\] \*\*AC-US\d+-\d+\*\*/gm);
+  const plainAcMatches = content.match(/^[\s]*- \[[x ]\]\s+AC-US\d+-\d+:/gm);
+  const actualCount = Math.max(
+    boldAcMatches ? boldAcMatches.length : 0,
+    plainAcMatches ? plainAcMatches.length : 0,
+  );
 
   if (actualCount === 0) {
     logger.error(`❌ spec.md contains 0 ACs (expected ${expectedACCount})`);

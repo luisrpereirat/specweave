@@ -4,19 +4,37 @@
 
 Before marking increment ready, verify:
 
-### 1. Spec Quality
-- [ ] All user stories have acceptance criteria
-- [ ] AC IDs follow format: AC-US{N}-{NN}
-- [ ] Problem statement is clear
-- [ ] Success metrics defined
+### 1. XML Structure
+- [ ] `<increment>` root tag present
+- [ ] `<id>`, `<title>`, `<status>`, `<priority>`, `<type>`, `<created>` metadata tags present
+- [ ] `<user_stories>` section with `<user_story>` children
+- [ ] Each `<user_story>` has `id` and `project` attributes
+- [ ] Each `<user_story>` contains `<acceptance_criteria>` block
 
-### 2. File Structure
+### 2. Spec Quality
+- [ ] All user stories have acceptance criteria in BDD format
+- [ ] AC IDs follow format: AC-US{N}-{NN}
+- [ ] Problem statement is clear and specific
+- [ ] Success metrics defined with measurable targets
+- [ ] No vague adjectives in hardening blocks (no "fast", "smooth", "nice")
+
+### 3. Hardening Blocks (all 8 required)
+- [ ] `<error_handling>` -- user-visible error behavior with colors, sizes, timing
+- [ ] `<responsive_design>` -- breakpoints in px, layout changes
+- [ ] `<accessibility>` -- ARIA labels, roles, WCAG compliance levels
+- [ ] `<initial_states>` -- first load, empty, loading with exact visuals
+- [ ] `<security_and_compliance>` -- validation, auth, sanitization
+- [ ] `<performance_and_capacity>` -- latency targets, resource limits
+- [ ] `<operational_constraints>` -- runtime, platform requirements
+- [ ] `<anti_requirements>` -- things the system must NOT do
+
+### 4. File Structure
 - [ ] `spec.md` in increment root
 - [ ] `plan.md` in increment root (if architecture done)
 - [ ] `tasks.md` in increment root (if planning done)
 - [ ] `metadata.json` exists with correct status
 
-### 3. Metadata Check
+### 5. Metadata Check
 
 ```json
 {
@@ -28,38 +46,61 @@ Before marking increment ready, verify:
 }
 ```
 
-### 4. Cross-Reference Check
-- [ ] User stories reference correct project
-- [ ] Tasks link to user stories (T-001 → US-001)
+### 6. Cross-Reference Check
+- [ ] User stories reference correct project via `project` attribute
+- [ ] Tasks link to user stories (T-001 satisfies AC-US1-01)
 - [ ] Acceptance criteria are traceable
+- [ ] `<dependencies>` section (if present) has no cycles or missing references
 
 ## Common Issues
 
 ### Missing AC IDs
-```markdown
-❌ Wrong:
+```
+Bad:
 - [ ] User can log in
 
-✅ Correct:
-- [ ] **AC-US1-01**: User can log in with valid credentials
+Good:
+- [ ] AC-US1-01: Given valid credentials, when user submits login form, then redirect to dashboard
+```
+
+### Missing Hardening Block
+```
+Bad: spec.md has 6 of 8 hardening blocks (missing <accessibility> and <anti_requirements>)
+
+Good: All 8 hardening blocks present with quantified values
+```
+
+### Vague Specs
+```
+Bad:
+<error_handling>
+  - Show a nice error message when things go wrong
+</error_handling>
+
+Good:
+<error_handling>
+  - If API returns 500, show inline banner with #FFF3E0 background and
+    #E65100 text: "Something went wrong. Please try again." with "Retry"
+    button. Auto-dismiss after 5 seconds.
+</error_handling>
 ```
 
 ### Orphan Files
-```markdown
-❌ Wrong:
+```
+Bad:
 .specweave/increments/0001-auth/PM-REPORT.md
 
-✅ Correct:
+Good:
 .specweave/increments/0001-auth/reports/PM-REPORT.md
 ```
 
 ### Status Mismatch
-```markdown
-❌ Wrong:
+```
+Bad:
 metadata.json says "completed" but tasks.md has unchecked tasks
 
-✅ Correct:
-All tasks [x] completed → status can be "completed"
+Good:
+All tasks [x] completed -> status can be "completed"
 ```
 
 ## Validation Report Format
@@ -68,15 +109,18 @@ All tasks [x] completed → status can be "completed"
 ## Increment Validation Report
 
 **Increment**: 0001-feature-name
-**Status**: ✅ VALID / ❌ ISSUES FOUND
+**Status**: VALID / ISSUES FOUND
 
 ### Checks
 | Check | Status | Notes |
 |-------|--------|-------|
-| Spec quality | ✅ | 5 US, 18 ACs |
-| File structure | ✅ | All files correct |
-| Metadata | ✅ | Status matches |
-| Cross-references | ✅ | All linked |
+| XML structure | pass | Valid <increment> with all metadata |
+| Spec quality | pass | 5 US, 18 ACs, BDD format |
+| Hardening blocks | pass | 8/8 present, all quantified |
+| File structure | pass | All files correct |
+| Metadata | pass | Status matches |
+| Cross-references | pass | All linked |
+| Dependencies DAG | pass | No cycles, valid execution order |
 
 ### Issues (if any)
 - [Issue 1]

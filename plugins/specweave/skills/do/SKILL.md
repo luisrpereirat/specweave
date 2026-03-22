@@ -73,6 +73,21 @@ This ensures the execution loop stays focused on the contextually correct increm
    ```
    If fails: manually add ACs to spec.md, then retry. Do NOT proceed without ACs in spec.md.
 
+### Step 2.8: Dependency Satisfaction Check
+
+Before starting work on any user story, verify that its prerequisites are satisfied:
+
+1. **Parse the `<dependencies>` section** from spec.md. If absent, all stories are independent -- skip this step.
+2. **For the target story**, find all stories it depends on (direct predecessors only -- the validator already caught cycles and missing refs).
+3. **Check predecessor AC status**: For each predecessor story, verify that ALL its acceptance criteria are marked `[x]` in spec.md.
+4. **Decision matrix**:
+   - All predecessor ACs are `[x]` -> proceed normally
+   - Some predecessor ACs are `[ ]` -> WARN the user: "US-NNN depends on US-MMM, which has N unchecked ACs. Starting work may be premature."
+   - Predecessor has open defects in `defects.json` -> WARN: "US-MMM has N open defects that may affect US-NNN."
+5. **Do not block**, but surface the warnings prominently. The user may have valid reasons to proceed (e.g., working on non-dependent ACs within the story).
+6. **Suggest execution order**: If multiple tasks are ready, prefer tasks belonging to stories earlier in the topological execution order (roots first, then their dependents).
+7. **User override**: If the user explicitly requests a specific story or task (e.g., "work on US-003" or "skip dependency checks"), proceed regardless of dependency status. Log a note: "Dependency check bypassed at user request -- US-003 has unsatisfied predecessors: [list]." This allows quick concept prototyping or out-of-order work when the user knows what they are doing.
+
 ### Step 2.5: PR-Based Branch Setup (conditional)
 
 Check push strategy:
@@ -124,6 +139,13 @@ Include trade-off note: "Team-lead and auto modes consume more tokens but delive
 If user chooses auto or team-lead, invoke the chosen skill with the increment ID and **stop sw:do execution**.
 
 **In auto mode (`.specweave/state/auto-mode.json` active)**: If 3+ domains detected, automatically invoke `sw:team-lead` instead of proceeding sequentially.
+
+### Step 2.9: Defect-First Prioritization
+
+Before starting a new task, check `defects.json` in the increment directory:
+- If open defects exist for the current AC, fix those FIRST
+- Defect fixes take priority over new feature work
+- After fixing a defect, set its status to `"fixed"` in `defects.json` (not `"verified"` -- verification comes from `sw:grill`)
 
 ### Step 3: TDD Setup
 
@@ -179,6 +201,7 @@ For each task:
 - **AC-sync hook fires automatically** (via PostToolUse on Edit/Write) updating spec.md ACs
 - **Update docs inline**: CLAUDE.md (new commands/config/skills), README.md (user-facing changes), CHANGELOG.md (API/breaking changes), openapi.yaml (if API task + apiDocs.enabled)
 - **GitHub sync** (if plugin enabled): close task issue, check off in epic, post completion comment
+- **Test manifest update**: After writing tests for an AC, update `test-manifest.json` in the increment directory with `automationType`, `testFile`, `testName` for each test. On defect fix, set defect status to `"fixed"` in `defects.json` (not `"verified"` -- verification comes from `sw:grill`).
 - Continue to next incomplete task
 
 ### Step 6.5: Per-Task Review Gate (Opt-In)

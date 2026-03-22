@@ -7,6 +7,9 @@ import { consoleLogger } from '../../utils/logger.js';
 import { ExternalToolDriftDetector } from '../../utils/external-tool-drift-detector.js';
 import { validateCoverage, type TestMode } from '../qa/coverage-validator.js';
 import { resolveEffectiveRoot } from '../../utils/find-project-root.js';
+import { validateDAG } from '../../validators/dependency-dag-validator.js';
+import { allDefectsVerified, getDefectSummary } from './defect-manager.js';
+import { parseTestManifest } from './test-manifest-manager.js';
 
 /**
  * Validation result for increment completion
@@ -189,6 +192,70 @@ export class IncrementCompletionValidator {
     } catch (error) {
       logger.warn(`Quality gate report validation failed: ${error instanceof Error ? error.message : String(error)}`);
       warnings.push('Quality gate report validation skipped due to error');
+    }
+
+    // NEW: DAG dependency validation
+    // Validates that the user story dependency graph has no cycles or missing references.
+    try {
+      const specContent = await fs.readFile(specPath, 'utf-8');
+      const dagResult = validateDAG(specContent);
+      if (!dagResult.valid) {
+        for (const dagError of dagResult.errors) {
+          errors.push(`DAG: ${dagError}`);
+        }
+      }
+      for (const dagWarning of dagResult.warnings) {
+        warnings.push(`DAG: ${dagWarning}`);
+      }
+    } catch (error) {
+      logger.warn(`DAG validation failed: ${error instanceof Error ? error.message : String(error)}`);
+      warnings.push('DAG dependency validation skipped due to error');
+    }
+
+    // NEW: Defect gate validation
+    // All defects in defects.json must be verified before closure.
+    try {
+      if (!allDefectsVerified(incrementPath)) {
+        const summary = getDefectSummary(incrementPath);
+        const openCount = summary.open + summary.fixed;
+        errors.push(
+          `${openCount} unverified defect(s) remain (${summary.open} open, ${summary.fixed} fixed but unverified).\n` +
+          `    All defects must reach "verified" status before closure.\n` +
+          `    Run sw:grill to re-verify fixed defects.`
+        );
+      }
+    } catch (error) {
+      logger.warn(`Defect gate validation failed: ${error instanceof Error ? error.message : String(error)}`);
+      warnings.push('Defect gate validation skipped due to error');
+    }
+
+    // NEW: Automation coverage check (non-blocking warning)
+    try {
+      const manifest = parseTestManifest(incrementPath);
+      if (manifest) {
+        let coverageTarget = 60; // default
+        try {
+          const configPath = path.join(resolveEffectiveRoot(), '.specweave', 'config.json');
+          if (await fs.pathExists(configPath)) {
+            const config = JSON.parse(await fs.readFile(configPath, 'utf-8'));
+            if (typeof config?.automation?.coverageTarget === 'number') {
+              coverageTarget = config.automation.coverageTarget;
+            }
+          }
+        } catch {
+          // Use default
+        }
+
+        if (manifest.coverage.automationPercentage < coverageTarget) {
+          warnings.push(
+            `Automation coverage ${manifest.coverage.automationPercentage}% is below target ${coverageTarget}%.\n` +
+            `    ${manifest.coverage.manualACs} of ${manifest.coverage.totalACs} ACs have only manual testing.\n` +
+            `    Consider adding automated tests for better regression coverage.`
+          );
+        }
+      }
+    } catch (error) {
+      logger.warn(`Automation coverage check failed: ${error instanceof Error ? error.message : String(error)}`);
     }
 
     // NEW (v1.0.105): Test coverage validation for TDD increments
@@ -480,8 +547,11 @@ export class IncrementCompletionValidator {
     let currentPriority = 'P1'; // Default priority
 
     for (const line of lines) {
-      // Match AC lines: - [x] **AC-US1-01**: Description
-      const acMatch = line.match(/^-\s*\[[ x]\]\s*\*\*([A-Z]{2}-[A-Z0-9]+-\d+)\*\*:\s*(.+)/);
+      // Match AC lines: bold format - [x] **AC-US1-01**: Description
+      const boldMatch = line.match(/^-\s*\[[ x]\]\s*\*\*([A-Z]{2}-[A-Z0-9]+-\d+)\*\*:\s*(.+)/);
+      // Match AC lines: plain format - [ ] AC-US1-01: Description (XML spec format)
+      const plainMatch = line.match(/^\s*-\s*\[[ x]\]\s+(AC-US\d+-\d+):\s*(.+)/);
+      const acMatch = boldMatch || plainMatch;
       if (acMatch) {
         // Save previous AC if exists
         if (currentACId && currentDescription) {
@@ -521,7 +591,7 @@ export class IncrementCompletionValidator {
   /**
    * Count open (unchecked) acceptance criteria in spec.md
    *
-   * Searches for pattern: - [ ] **AC-
+   * Searches for both bold (**AC-...**:) and plain (AC-...:) formats.
    *
    * @param incrementId - The increment ID
    * @returns Number of open ACs
@@ -531,12 +601,13 @@ export class IncrementCompletionValidator {
 
     const content = await fs.readFile(specPath, 'utf-8');
 
-    // Match unchecked ACs: - [ ] **AC-
-    // Must be at start of line (^), followed by - [ ], then **AC-
-    const openACPattern = /^- \[ \] \*\*AC-/gm;
-    const matches = content.match(openACPattern) || [];
+    // Match unchecked ACs: both bold and plain formats
+    const boldPattern = /^- \[ \] \*\*AC-/gm;
+    const plainPattern = /^[\s]*- \[ \]\s+AC-US\d+-\d+:/gm;
+    const boldMatches = content.match(boldPattern) || [];
+    const plainMatches = content.match(plainPattern) || [];
 
-    return matches.length;
+    return Math.max(boldMatches.length, plainMatches.length);
   }
 
   /**

@@ -65,18 +65,18 @@ describe('Increment Template Workflow Integration', () => {
       const specPath = path.join(incrementsPath, '0001-stripe-dashboard', 'spec.md');
       const content = fs.readFileSync(specPath, 'utf-8');
 
-      // CRITICAL: Must have template markers
-      expect(content).toContain('[Story Title]');
+      // CRITICAL: Must have template markers (XML format uses <user_story> tags with placeholder content)
+      expect(content).toContain('<user_story');
       expect(content).toContain('[user type]');
       expect(content).toContain('[goal]');
       expect(content).toContain('[benefit]');
 
       // CRITICAL: Must NOT have fully populated user stories
       // These would indicate the skill system was bypassed
-      expect(content).not.toMatch(/### US-001: User Registration/);
-      expect(content).not.toMatch(/### US-001: Login Feature/);
-      expect(content).not.toMatch(/\*\*As a\*\* new user/);
-      expect(content).not.toMatch(/\*\*As a\*\* registered user/);
+      expect(content).not.toMatch(/User Registration/);
+      expect(content).not.toMatch(/Login Feature/);
+      expect(content).not.toMatch(/As a new user/);
+      expect(content).not.toMatch(/As a registered user/);
 
       // Must be detected as template
       expect(isTemplateFile(specPath)).toBe(true);

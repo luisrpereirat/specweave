@@ -73,7 +73,8 @@ export interface ParsedSpec {
 }
 
 /**
- * Parse spec file into structured format
+ * Parse spec file into structured format.
+ * Supports both XML-fenced format (<increment> tags) and legacy markdown (YAML frontmatter + ## headings).
  *
  * @param specPath Path to spec.md file
  * @returns Parsed spec structure
@@ -81,6 +82,12 @@ export interface ParsedSpec {
 export async function parseSpecFile(specPath: string): Promise<ParsedSpec> {
   const content = await fs.readFile(specPath, 'utf-8');
 
+  // Detect format: XML-fenced vs legacy markdown
+  if (content.includes('<increment>')) {
+    return parseXmlSpec(content);
+  }
+
+  // Legacy markdown format
   // Extract frontmatter
   const frontmatterMatch = content.match(/^---\n([\s\S]*?)\n---/);
   if (!frontmatterMatch) {
@@ -110,6 +117,96 @@ export async function parseSpecFile(specPath: string): Promise<ParsedSpec> {
     futureRoadmap: sections.futureRoadmap || '',
     appendices: sections.appendices || ''
   };
+}
+
+/**
+ * Extract text content between XML tags.
+ * Returns empty string if tag not found.
+ */
+function extractXmlTagContent(content: string, tagName: string): string {
+  const pattern = new RegExp(`<${tagName}[^>]*>([\\s\\S]*?)</${tagName}>`, 'm');
+  const match = content.match(pattern);
+  return match ? match[1].trim() : '';
+}
+
+/**
+ * Parse XML-fenced spec into structured format.
+ */
+function parseXmlSpec(content: string): ParsedSpec {
+  const metadata: SpecMetadata = {
+    specId: extractXmlTagContent(content, 'id'),
+    title: extractXmlTagContent(content, 'title'),
+    version: '1.0',
+    status: extractXmlTagContent(content, 'status'),
+    created: extractXmlTagContent(content, 'created'),
+    authors: [],
+    priority: extractXmlTagContent(content, 'priority'),
+  };
+
+  const userStories = parseXmlUserStories(content);
+
+  return {
+    metadata: normalizeMetadata(metadata),
+    executiveSummary: '',
+    problemStatement: extractXmlTagContent(content, 'problem_statement'),
+    userStories,
+    functionalRequirements: '',
+    nonFunctionalRequirements: extractXmlTagContent(content, 'non_functional_requirements'),
+    successMetrics: extractXmlTagContent(content, 'success_metrics'),
+    technicalArchitecture: extractXmlTagContent(content, 'technology_stack'),
+    testStrategy: '',
+    riskAnalysis: extractXmlTagContent(content, 'risks'),
+    futureRoadmap: '',
+    appendices: '',
+  };
+}
+
+/**
+ * Parse user stories from XML-fenced format.
+ * Matches <user_story id="US-001" project="..."> blocks.
+ */
+function parseXmlUserStories(content: string): UserStory[] {
+  const stories: UserStory[] = [];
+  const storyPattern = /<user_story\s+id="(US-(?:[A-Za-z]+-)*\d+)"(?:\s+project="([^"]*)")?>([\s\S]*?)<\/user_story>/g;
+
+  let match;
+  while ((match = storyPattern.exec(content)) !== null) {
+    const id = match[1];
+    const storyContent = match[3];
+
+    // Extract the narrative (As a... I want... So that...)
+    const narrativeMatch = storyContent.match(/As\s+(?:a|an)\s+(.+?)\s*\n\s*I want\s+(.+?)\s*\n\s*So that\s+(.+?)(?:\n|$)/is);
+    const description = narrativeMatch
+      ? `As a ${narrativeMatch[1].trim()} I want ${narrativeMatch[2].trim()} So that ${narrativeMatch[3].trim()}`
+      : '';
+
+    // Extract title from the narrative or first line
+    const title = narrativeMatch
+      ? narrativeMatch[2].trim()
+      : storyContent.trim().split('\n')[0].trim();
+
+    // Extract acceptance criteria
+    const acceptanceCriteria: string[] = [];
+    const acSection = extractXmlTagContent(storyContent, 'acceptance_criteria');
+    if (acSection) {
+      const acLines = acSection.split('\n');
+      for (const line of acLines) {
+        const acMatch = line.match(/^[\s]*-\s*\[[x ]\]\s*\*{0,2}(AC-[A-Z0-9-]+)\*{0,2}:\s*(.+)/);
+        if (acMatch) {
+          acceptanceCriteria.push(`${acMatch[1]}: ${acMatch[2].trim()}`);
+        }
+      }
+    }
+
+    stories.push({
+      id,
+      title,
+      description,
+      acceptanceCriteria,
+    });
+  }
+
+  return stories;
 }
 
 /**
